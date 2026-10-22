@@ -217,7 +217,10 @@
     <div id="memberTab-savings" class="tab-content active">
       <div class="card">
         <div class="card-header">
-          <h2>Add Savings</h2>
+          <h2>Submit a Payment</h2>
+        </div>
+        <div class="alert alert-info" style="margin-bottom:12px;">
+          <i class="fas fa-info-circle"></i> Submit your payment details below. An admin will review and approve it before it reflects on your savings.
         </div>
         <form id="savingsForm" style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:16px;align-items:end;">
           <div class="form-group" style="margin-bottom:0;">
@@ -250,7 +253,8 @@
                 <th>Type</th>
                 <th>Week</th>
                 <th>Amount</th>
-                <th>Note</th>
+                <th>Status</th>
+                <th>Note / Comment</th>
               </tr>
             </thead>
             <tbody id="savingsTableBody"></tbody>
@@ -376,14 +380,44 @@
 
     <!-- Tabs -->
     <div class="tabs">
-      <button class="tab active" onclick="switchAdminTab('loans', this)"><i class="fas fa-hand-holding-usd"></i> Loan Requests</button>
+      <button class="tab active" onclick="switchAdminTab('savings', this)"><i class="fas fa-piggy-bank"></i> Pending Savings</button>
+      <button class="tab" onclick="switchAdminTab('loans', this)"><i class="fas fa-hand-holding-usd"></i> Loan Requests</button>
       <button class="tab" onclick="switchAdminTab('members', this)"><i class="fas fa-users"></i> Members</button>
       <button class="tab" onclick="switchAdminTab('meetings', this)"><i class="fas fa-calendar-check"></i> Meetings</button>
       <button class="tab" onclick="switchAdminTab('suggestions', this)"><i class="fas fa-lightbulb"></i> Loan Suggestions</button>
     </div>
 
+    <!-- Pending Savings Tab (default active) -->
+    <div id="adminTab-savings" class="tab-content active">
+      <div class="card">
+        <div class="card-header">
+          <h2><i class="fas fa-clock"></i> Pending Payment Approvals</h2>
+          <button class="btn btn-accent btn-sm" onclick="loadAdminDashboard()"><i class="fas fa-sync"></i> Refresh</button>
+        </div>
+        <div class="alert alert-info" style="margin-bottom:16px;">
+          Members submit their payment details here. Review and approve or reject each entry before it counts toward their savings and loan eligibility.
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Member</th>
+                <th>Type</th>
+                <th>Week</th>
+                <th>Amount</th>
+                <th>Note</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="adminPendingSavingsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- Loans Tab -->
-    <div id="adminTab-loans" class="tab-content active">
+    <div id="adminTab-loans" class="tab-content">
       <div class="card">
         <div class="card-header">
           <h2>Loan Requests</h2>

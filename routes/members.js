@@ -25,15 +25,21 @@ router.get('/profile', (req, res) => {
     return res.status(404).json({ error: 'User not found' });
   }
 
-  // Get savings summary
+  // Only APPROVED savings count toward totals and loan eligibility
   const weeklySavings = db.prepare(`
     SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as weeks
-    FROM savings WHERE user_id = ? AND type = 'weekly'
+    FROM savings WHERE user_id = ? AND type = 'weekly' AND status = 'approved'
   `).get(req.user.id);
 
   const specialSavings = db.prepare(`
     SELECT COALESCE(SUM(amount), 0) as total
-    FROM savings WHERE user_id = ? AND type = 'special'
+    FROM savings WHERE user_id = ? AND type = 'special' AND status = 'approved'
+  `).get(req.user.id);
+
+  // Pending savings (awaiting admin approval)
+  const pendingSavings = db.prepare(`
+    SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as cnt
+    FROM savings WHERE user_id = ? AND status = 'pending'
   `).get(req.user.id);
 
   res.json({
@@ -45,7 +51,9 @@ router.get('/profile', (req, res) => {
       weekly_total: weeklySavings.total,
       weekly_weeks: weeklySavings.weeks,
       special_total: specialSavings.total,
-      grand_total: weeklySavings.total + specialSavings.total
+      grand_total: weeklySavings.total + specialSavings.total,
+      pending_total: pendingSavings.total,
+      pending_count: pendingSavings.cnt
     }
   });
 });
@@ -78,14 +86,20 @@ router.get('/savings', (req, res) => {
     SELECT * FROM savings WHERE user_id = ? ORDER BY created_at DESC
   `).all(req.user.id);
 
+  // Only APPROVED savings count
   const weeklyTotal = db.prepare(`
     SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as weeks
-    FROM savings WHERE user_id = ? AND type = 'weekly'
+    FROM savings WHERE user_id = ? AND type = 'weekly' AND status = 'approved'
   `).get(req.user.id);
 
   const specialTotal = db.prepare(`
     SELECT COALESCE(SUM(amount), 0) as total
-    FROM savings WHERE user_id = ? AND type = 'special'
+    FROM savings WHERE user_id = ? AND type = 'special' AND status = 'approved'
+  `).get(req.user.id);
+
+  const pendingTotal = db.prepare(`
+    SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as cnt
+    FROM savings WHERE user_id = ? AND status = 'pending'
   `).get(req.user.id);
 
   res.json({
@@ -94,12 +108,14 @@ router.get('/savings', (req, res) => {
       weekly_total: weeklyTotal.total,
       weekly_weeks: weeklyTotal.weeks,
       special_total: specialTotal.total,
-      grand_total: weeklyTotal.total + specialTotal.total
+      grand_total: weeklyTotal.total + specialTotal.total,
+      pending_total: pendingTotal.total,
+      pending_count: pendingTotal.cnt
     }
   });
 });
 
-// POST /api/members/savings
+// POST /api/members/savings — member SUGGESTS a payment (status = pending)
 router.post('/savings', (req, res) => {
   const { type, amount, note } = req.body;
 
@@ -111,31 +127,29 @@ router.post('/savings', (req, res) => {
     return res.status(400).json({ error: 'Savings type must be "weekly" or "special"' });
   }
 
-  // For weekly savings, determine the week number
+  // Week number assigned at submission time (based on approved savings count + pending)
   let weekNumber = null;
   let year = null;
 
   if (type === 'weekly') {
-    // Count existing weekly savings to determine week number
     const count = db.prepare(`
-      SELECT COUNT(*) as cnt FROM savings WHERE user_id = ? AND type = 'weekly'
+      SELECT COUNT(*) as cnt FROM savings
+      WHERE user_id = ? AND type = 'weekly'
     `).get(req.user.id);
-
     weekNumber = count.cnt + 1;
     year = new Date().getFullYear();
   }
 
   const id = uuid();
+  // Status starts as 'pending' — admin must approve before it counts
   db.prepare(`
-    INSERT INTO savings (id, user_id, type, amount, week_number, year, note)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO savings (id, user_id, type, amount, week_number, year, note, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
   `).run(id, req.user.id, type, amount, weekNumber, year, note || null);
 
   res.status(201).json({
-    message: `${type === 'weekly' ? 'Weekly' : 'Special'} savings of N${amount.toLocaleString()} recorded successfully`,
-    saving: {
-      id, type, amount, week_number: weekNumber, year, note
-    }
+    message: `Payment of N${Number(amount).toLocaleString()} submitted successfully. Awaiting admin approval before it counts.`,
+    saving: { id, type, amount, week_number: weekNumber, year, note, status: 'pending' }
   });
 });
 
@@ -160,34 +174,31 @@ router.post('/loans', (req, res) => {
     return res.status(400).json({ error: 'A valid loan amount is required' });
   }
 
-  // Get weekly savings
+  // Only APPROVED weekly savings count for loan eligibility
   const weeklySavings = db.prepare(`
     SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as weeks
-    FROM savings WHERE user_id = ? AND type = 'weekly'
+    FROM savings WHERE user_id = ? AND type = 'weekly' AND status = 'approved'
   `).get(req.user.id);
 
-  // Check minimum 12 weeks of weekly contribution
   if (weeklySavings.weeks < 12) {
     return res.status(400).json({
       error: 'Loan requirement not met',
-      message: `You need at least 12 weeks of weekly savings. You currently have ${weeklySavings.weeks} weeks.`,
+      message: `You need at least 12 weeks of approved weekly savings. You currently have ${weeklySavings.weeks} approved weeks.`,
       weekly_weeks: weeklySavings.weeks,
       required_weeks: 12
     });
   }
 
-  // Check loan amount does not exceed 2x total weekly savings
   const maxLoanAmount = weeklySavings.total * 2;
   if (amount_requested > maxLoanAmount) {
     return res.status(400).json({
       error: 'Loan amount exceeds limit',
-      message: `Maximum loan amount is 2x your total weekly savings (N${maxLoanAmount.toLocaleString()}). You requested N${amount_requested.toLocaleString()}.`,
+      message: `Maximum loan is 2x your approved weekly savings (N${maxLoanAmount.toLocaleString()}). You requested N${Number(amount_requested).toLocaleString()}.`,
       max_loan: maxLoanAmount,
       weekly_savings_total: weeklySavings.total
     });
   }
 
-  // Check for pending or in-progress loans
   const activeLoans = db.prepare(`
     SELECT COUNT(*) as cnt FROM loans
     WHERE user_id = ? AND status IN ('pending', 'approved', 'in_progress')
@@ -208,9 +219,7 @@ router.post('/loans', (req, res) => {
 
   res.status(201).json({
     message: 'Loan application submitted successfully. An admin will review your request.',
-    loan: {
-      id, amount_requested, purpose, status: 'pending'
-    },
+    loan: { id, amount_requested, purpose, status: 'pending' },
     loan_eligibility: {
       weekly_savings_total: weeklySavings.total,
       weekly_weeks: weeklySavings.weeks,
@@ -225,12 +234,10 @@ router.post('/loans', (req, res) => {
 
 // GET /api/members/meetings
 router.get('/meetings', (req, res) => {
-  // Get the latest active meeting
   const activeMeeting = db.prepare(`
     SELECT * FROM meetings WHERE is_active = 1 ORDER BY created_at DESC LIMIT 1
   `).get();
 
-  // Check if user has checked in
   let attendance = null;
   if (activeMeeting) {
     attendance = db.prepare(`
@@ -238,7 +245,6 @@ router.get('/meetings', (req, res) => {
     `).get(activeMeeting.id, req.user.id);
   }
 
-  // Get attendance history
   const history = db.prepare(`
     SELECT ma.*, m.meeting_code, m.meeting_date
     FROM meeting_attendance ma
@@ -263,7 +269,6 @@ router.post('/checkin', (req, res) => {
     return res.status(400).json({ error: 'Meeting code is required' });
   }
 
-  // Find the active meeting with matching code
   const meeting = db.prepare(`
     SELECT * FROM meetings WHERE meeting_code = ? AND is_active = 1
   `).get(meeting_code);
@@ -272,7 +277,6 @@ router.post('/checkin', (req, res) => {
     return res.status(400).json({ error: 'Invalid or expired meeting code' });
   }
 
-  // Check if already checked in
   const existing = db.prepare(`
     SELECT id FROM meeting_attendance WHERE meeting_id = ? AND user_id = ?
   `).get(meeting.id, req.user.id);

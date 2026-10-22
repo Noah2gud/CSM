@@ -26,12 +26,19 @@ router.get('/dashboard', (req, res) => {
     SELECT COUNT(*) as cnt FROM users WHERE role = 'member' AND status = 'pending'
   `).get();
 
+  // Only APPROVED savings count in cooperative totals
   const totalSavings = db.prepare(`
     SELECT
       COALESCE(SUM(CASE WHEN type = 'weekly' THEN amount ELSE 0 END), 0) as weekly,
       COALESCE(SUM(CASE WHEN type = 'special' THEN amount ELSE 0 END), 0) as special,
       COALESCE(SUM(amount), 0) as grand_total
-    FROM savings
+    FROM savings WHERE status = 'approved'
+  `).get();
+
+  // Pending savings awaiting admin approval
+  const pendingSavings = db.prepare(`
+    SELECT COUNT(*) as cnt, COALESCE(SUM(amount), 0) as total
+    FROM savings WHERE status = 'pending'
   `).get();
 
   const pendingLoans = db.prepare(`
@@ -64,7 +71,7 @@ router.get('/dashboard', (req, res) => {
     `).get(activeMeeting.id).cnt;
   }
 
-  // Available funds = total savings - approved loans amount
+  // Available funds = total approved savings - approved loans amount
   const availableFunds = totalSavings.grand_total - approvedLoans.total - inProgressLoans.total;
 
   res.json({
@@ -76,6 +83,8 @@ router.get('/dashboard', (req, res) => {
       total_special_savings: totalSavings.special,
       grand_total_savings: totalSavings.grand_total,
       available_funds: availableFunds,
+      pending_savings: pendingSavings.cnt,
+      pending_savings_amount: pendingSavings.total,
       pending_loans: pendingLoans.cnt,
       pending_loans_amount: pendingLoans.total,
       approved_loans: approvedLoans.cnt,
@@ -100,9 +109,10 @@ router.get('/members', (req, res) => {
       u.id, u.full_name, u.email, u.phone, u.address, u.date_of_birth,
       u.occupation, u.next_of_kin, u.next_of_kin_phone, u.bvn,
       u.credit_score, u.registration_fee_paid, u.role, u.status, u.created_at,
-      COALESCE((SELECT SUM(amount) FROM savings WHERE user_id = u.id AND type = 'weekly'), 0) as weekly_savings,
-      COALESCE((SELECT SUM(amount) FROM savings WHERE user_id = u.id AND type = 'special'), 0) as special_savings,
-      COALESCE((SELECT COUNT(*) FROM savings WHERE user_id = u.id AND type = 'weekly'), 0) as weeks_saved,
+      COALESCE((SELECT SUM(amount) FROM savings WHERE user_id = u.id AND type = 'weekly' AND status = 'approved'), 0) as weekly_savings,
+      COALESCE((SELECT SUM(amount) FROM savings WHERE user_id = u.id AND type = 'special' AND status = 'approved'), 0) as special_savings,
+      COALESCE((SELECT COUNT(*) FROM savings WHERE user_id = u.id AND type = 'weekly' AND status = 'approved'), 0) as weeks_saved,
+      COALESCE((SELECT COUNT(*) FROM savings WHERE user_id = u.id AND status = 'pending'), 0) as pending_savings,
       COALESCE((SELECT COUNT(*) FROM meeting_attendance WHERE user_id = u.id), 0) as meetings_attended,
       COALESCE((SELECT COUNT(*) FROM loans WHERE user_id = u.id AND status = 'rejected'), 0) as rejected_loans,
       COALESCE((SELECT COUNT(*) FROM loans WHERE user_id = u.id AND status IN ('approved', 'in_progress')), 0) as active_loans
@@ -146,12 +156,17 @@ router.get('/members/:id', (req, res) => {
 
   const weeklySummary = db.prepare(`
     SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as weeks
-    FROM savings WHERE user_id = ? AND type = 'weekly'
+    FROM savings WHERE user_id = ? AND type = 'weekly' AND status = 'approved'
   `).get(req.params.id);
 
   const specialSummary = db.prepare(`
     SELECT COALESCE(SUM(amount), 0) as total
-    FROM savings WHERE user_id = ? AND type = 'special'
+    FROM savings WHERE user_id = ? AND type = 'special' AND status = 'approved'
+  `).get(req.params.id);
+
+  const pendingSummary = db.prepare(`
+    SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as cnt
+    FROM savings WHERE user_id = ? AND status = 'pending'
   `).get(req.params.id);
 
   res.json({
@@ -167,6 +182,8 @@ router.get('/members/:id', (req, res) => {
       weekly_weeks: weeklySummary.weeks,
       special_total: specialSummary.total,
       grand_total: weeklySummary.total + specialSummary.total,
+      pending_total: pendingSummary.total,
+      pending_count: pendingSummary.cnt,
       max_loan_eligible: weeklySummary.total * 2,
       meets_12_week_requirement: weeklySummary.weeks >= 12
     }
@@ -184,6 +201,83 @@ router.put('/members/:id/status', (req, res) => {
     .run(status, req.params.id);
 
   res.json({ message: `Member status updated to ${status}` });
+});
+
+// ============================================================
+// SAVINGS APPROVAL
+// ============================================================
+
+// GET /api/admin/savings/pending - All pending savings across all members
+router.get('/savings/pending', (req, res) => {
+  const pendingSavings = db.prepare(`
+    SELECT s.*, u.full_name, u.phone, u.email
+    FROM savings s
+    JOIN users u ON s.user_id = u.id
+    WHERE s.status = 'pending'
+    ORDER BY s.created_at ASC
+  `).all();
+
+  res.json({ savings: pendingSavings });
+});
+
+// PUT /api/admin/savings/:id - Approve or reject a savings entry
+router.put('/savings/:id', (req, res) => {
+  const { status, admin_comment } = req.body;
+
+  if (!['approved', 'rejected'].includes(status)) {
+    return res.status(400).json({ error: 'Status must be "approved" or "rejected"' });
+  }
+
+  const saving = db.prepare('SELECT * FROM savings WHERE id = ?').get(req.params.id);
+  if (!saving) {
+    return res.status(404).json({ error: 'Savings record not found' });
+  }
+
+  if (saving.status !== 'pending') {
+    return res.status(400).json({ error: 'This savings entry has already been reviewed' });
+  }
+
+  db.prepare(`
+    UPDATE savings SET
+      status = ?,
+      admin_comment = ?,
+      approved_by = ?,
+      approved_at = datetime('now')
+    WHERE id = ?
+  `).run(status, admin_comment || null, req.user.id, req.params.id);
+
+  res.json({
+    message: `Savings of N${Number(saving.amount).toLocaleString()} has been ${status}`,
+    saving: { id: req.params.id, status, amount: saving.amount }
+  });
+});
+
+// PUT /api/admin/savings/bulk-approve - Approve all pending savings for a member
+router.put('/savings/bulk-approve', (req, res) => {
+  const { user_id, status } = req.body;
+
+  if (!user_id || !['approved', 'rejected'].includes(status)) {
+    return res.status(400).json({ error: 'user_id and valid status required' });
+  }
+
+  const pending = db.prepare(`
+    SELECT COUNT(*) as cnt, COALESCE(SUM(amount), 0) as total
+    FROM savings WHERE user_id = ? AND status = 'pending'
+  `).get(user_id);
+
+  db.prepare(`
+    UPDATE savings SET
+      status = ?,
+      approved_by = ?,
+      approved_at = datetime('now')
+    WHERE user_id = ? AND status = 'pending'
+  `).run(status, req.user.id, user_id);
+
+  res.json({
+    message: `${pending.cnt} savings entries (N${Number(pending.total).toLocaleString()}) have been ${status}`,
+    count: pending.cnt,
+    total: pending.total
+  });
 });
 
 // ============================================================
@@ -268,7 +362,7 @@ router.get('/loans/:id/suggestion', (req, res) => {
   // Gather member performance data
   const weeklySavings = db.prepare(`
     SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as weeks
-    FROM savings WHERE user_id = ? AND type = 'weekly'
+    FROM savings WHERE user_id = ? AND type = 'weekly' AND status = 'approved'
   `).get(loan.user_id);
 
   const meetingsAttended = db.prepare(`
@@ -289,12 +383,12 @@ router.get('/loans/:id/suggestion', (req, res) => {
     SELECT COUNT(*) as cnt FROM loans WHERE user_id = ? AND status IN ('approved', 'in_progress')
   `).get(loan.user_id);
 
-  // Cooperative available funds
+  // Cooperative available funds (approved savings only)
   const cooperativeFunds = db.prepare(`
     SELECT
       COALESCE(SUM(s.amount), 0) as total_savings,
       COALESCE((SELECT SUM(amount_requested) FROM loans WHERE status IN ('approved', 'in_progress')), 0) as outstanding_loans
-    FROM savings s
+    FROM savings s WHERE s.status = 'approved'
   `).get();
 
   const availableFunds = cooperativeFunds.total_savings - cooperativeFunds.outstanding_loans;
@@ -572,8 +666,8 @@ router.get('/loans/suggestions/all', (req, res) => {
   const pendingLoans = db.prepare(`
     SELECT l.id, l.amount_requested, l.purpose, l.created_at,
       u.id as user_id, u.full_name, u.phone, u.email, u.credit_score,
-      COALESCE((SELECT SUM(amount) FROM savings WHERE user_id = u.id AND type = 'weekly'), 0) as weekly_savings,
-      COALESCE((SELECT COUNT(*) FROM savings WHERE user_id = u.id AND type = 'weekly'), 0) as weeks_saved,
+      COALESCE((SELECT SUM(amount) FROM savings WHERE user_id = u.id AND type = 'weekly' AND status = 'approved'), 0) as weekly_savings,
+      COALESCE((SELECT COUNT(*) FROM savings WHERE user_id = u.id AND type = 'weekly' AND status = 'approved'), 0) as weeks_saved,
       COALESCE((SELECT COUNT(*) FROM meeting_attendance WHERE user_id = u.id), 0) as meetings_attended,
       COALESCE((SELECT COUNT(*) FROM loans WHERE user_id = u.id AND status = 'rejected'), 0) as rejected_loans_count,
       COALESCE((SELECT COUNT(*) FROM loans WHERE user_id = u.id AND status IN ('approved', 'in_progress')), 0) as completed_loans_count
@@ -587,7 +681,7 @@ router.get('/loans/suggestions/all', (req, res) => {
     SELECT
       COALESCE(SUM(s.amount), 0) as total_savings,
       COALESCE((SELECT SUM(amount_requested) FROM loans WHERE status IN ('approved', 'in_progress')), 0) as outstanding_loans
-    FROM savings s
+    FROM savings s WHERE s.status = 'approved'
   `).get();
 
   const availableFunds = cooperativeFunds.total_savings - cooperativeFunds.outstanding_loans;

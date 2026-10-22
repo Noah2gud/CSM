@@ -98,6 +98,10 @@ const SCHEMA = `
     week_number INTEGER,
     year INTEGER,
     note TEXT,
+    status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected')),
+    admin_comment TEXT,
+    approved_by TEXT,
+    approved_at TEXT,
     created_at TEXT DEFAULT (datetime('now')),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );
