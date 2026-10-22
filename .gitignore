@@ -1,0 +1,6 @@
+node_modules/
+cooperative.db
+cooperative.db-shm
+cooperative.db-wal
+*.log
+.DS_Store
