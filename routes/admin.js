@@ -5,74 +5,66 @@ const { authenticate, requireAdmin } = require('../middleware/auth');
 const router = express.Router();
 const db = global.db;
 
-// All routes require admin authentication
+const RULES = {
+  RESERVE_RATE: 0.25,
+  MAX_LEND_RATE: 0.70,
+  MAX_SINGLE_LOAN_PCT: 0.10,
+  LOAN_MULTIPLIER: 2,
+  MIN_SAVINGS_WEEKS: 12,
+  PROCESSING_FEE_RATE: 0.01,
+  WELFARE_LEVY: 300,
+  PAUSE_FEE: 500,
+  SAVINGS_LATE_FINE: 200,
+  LOAN_LATE_FINE: 500,
+  WEEKLY_MAX: 20000,
+};
+
 router.use(authenticate, requireAdmin);
 
 // ============================================================
-// DASHBOARD STATS
+// HELPERS
 // ============================================================
+function getPoolStats() {
+  const pool = db.prepare(`SELECT COALESCE(SUM(amount),0) as total FROM savings WHERE status='approved'`).get();
+  const lent = db.prepare(`SELECT COALESCE(SUM(amount_approved),0) as total FROM loans WHERE status IN ('approved','in_progress')`).get();
+  const reserve = pool.total * RULES.RESERVE_RATE;
+  const maxLendable = pool.total * RULES.MAX_LEND_RATE;
+  const available = Math.max(0, maxLendable - lent.total);
+  return { pool: pool.total, lent: lent.total, reserve, maxLendable, available };
+}
 
-// GET /api/admin/dashboard
+// ============================================================
+// DASHBOARD
+// ============================================================
 router.get('/dashboard', (req, res) => {
-  const totalMembers = db.prepare(`
-    SELECT COUNT(*) as cnt FROM users WHERE role = 'member'
-  `).get();
+  const totalMembers = db.prepare(`SELECT COUNT(*) as cnt FROM users WHERE role='member'`).get();
+  const approvedMembers = db.prepare(`SELECT COUNT(*) as cnt FROM users WHERE role='member' AND status='approved'`).get();
+  const pendingMembers = db.prepare(`SELECT COUNT(*) as cnt FROM users WHERE role='member' AND status='pending'`).get();
 
-  const approvedMembers = db.prepare(`
-    SELECT COUNT(*) as cnt FROM users WHERE role = 'member' AND status = 'approved'
-  `).get();
-
-  const pendingMembers = db.prepare(`
-    SELECT COUNT(*) as cnt FROM users WHERE role = 'member' AND status = 'pending'
-  `).get();
-
-  // Only APPROVED savings count in cooperative totals
   const totalSavings = db.prepare(`
     SELECT
-      COALESCE(SUM(CASE WHEN type = 'weekly' THEN amount ELSE 0 END), 0) as weekly,
-      COALESCE(SUM(CASE WHEN type = 'special' THEN amount ELSE 0 END), 0) as special,
-      COALESCE(SUM(amount), 0) as grand_total
-    FROM savings WHERE status = 'approved'
+      COALESCE(SUM(CASE WHEN type='weekly' THEN amount ELSE 0 END),0) as weekly,
+      COALESCE(SUM(CASE WHEN type='special' THEN amount ELSE 0 END),0) as special,
+      COALESCE(SUM(amount),0) as grand_total
+    FROM savings WHERE status='approved'
   `).get();
 
-  // Pending savings awaiting admin approval
-  const pendingSavings = db.prepare(`
-    SELECT COUNT(*) as cnt, COALESCE(SUM(amount), 0) as total
-    FROM savings WHERE status = 'pending'
-  `).get();
-
-  const pendingLoans = db.prepare(`
-    SELECT COUNT(*) as cnt, COALESCE(SUM(amount_requested), 0) as total
-    FROM loans WHERE status = 'pending'
-  `).get();
-
-  const approvedLoans = db.prepare(`
-    SELECT COUNT(*) as cnt, COALESCE(SUM(amount_requested), 0) as total
-    FROM loans WHERE status = 'approved'
-  `).get();
-
-  const inProgressLoans = db.prepare(`
-    SELECT COUNT(*) as cnt, COALESCE(SUM(amount_requested), 0) as total
-    FROM loans WHERE status = 'in_progress'
-  `).get();
-
-  const rejectedLoans = db.prepare(`
-    SELECT COUNT(*) as cnt FROM loans WHERE status = 'rejected'
-  `).get();
-
-  const activeMeeting = db.prepare(`
-    SELECT * FROM meetings WHERE is_active = 1 ORDER BY created_at DESC LIMIT 1
-  `).get();
-
-  let meetingAttendanceCount = 0;
+  const pendingSavings = db.prepare(`SELECT COUNT(*) as cnt, COALESCE(SUM(amount),0) as total FROM savings WHERE status='pending'`).get();
+  const pendingLoans = db.prepare(`SELECT COUNT(*) as cnt, COALESCE(SUM(amount_requested),0) as total FROM loans WHERE status='pending'`).get();
+  const approvedLoans = db.prepare(`SELECT COUNT(*) as cnt, COALESCE(SUM(amount_approved),0) as total FROM loans WHERE status='approved'`).get();
+  const inProgressLoans = db.prepare(`SELECT COUNT(*) as cnt, COALESCE(SUM(amount_approved),0) as total FROM loans WHERE status='in_progress'`).get();
+  const rejectedLoans = db.prepare(`SELECT COUNT(*) as cnt FROM loans WHERE status='rejected'`).get();
+  const completedLoans = db.prepare(`SELECT COUNT(*) as cnt FROM loans WHERE status='completed'`).get();
+  const pendingRepayments = db.prepare(`SELECT COUNT(*) as cnt, COALESCE(SUM(amount),0) as total FROM loan_repayments WHERE status='pending'`).get();
+  const pendingPauses = db.prepare(`SELECT COUNT(*) as cnt FROM savings_pauses WHERE status='pending'`).get();
+  const outstandingFines = db.prepare(`SELECT COALESCE(SUM(amount),0) as total FROM savings_fines WHERE paid=0`).get();
+  const activeMeeting = db.prepare(`SELECT * FROM meetings WHERE is_active=1 ORDER BY created_at DESC LIMIT 1`).get();
+  let meetingAttendance = 0;
   if (activeMeeting) {
-    meetingAttendanceCount = db.prepare(`
-      SELECT COUNT(*) as cnt FROM meeting_attendance WHERE meeting_id = ?
-    `).get(activeMeeting.id).cnt;
+    meetingAttendance = db.prepare(`SELECT COUNT(*) as cnt FROM meeting_attendance WHERE meeting_id=?`).get(activeMeeting.id).cnt;
   }
 
-  // Available funds = total approved savings - approved loans amount
-  const availableFunds = totalSavings.grand_total - approvedLoans.total - inProgressLoans.total;
+  const pool = getPoolStats();
 
   res.json({
     stats: {
@@ -80,9 +72,13 @@ router.get('/dashboard', (req, res) => {
       approved_members: approvedMembers.cnt,
       pending_members: pendingMembers.cnt,
       total_weekly_savings: totalSavings.weekly,
-      total_special_savings: totalSavings.special,
+      total_voluntary_savings: totalSavings.special,
       grand_total_savings: totalSavings.grand_total,
-      available_funds: availableFunds,
+      pool: pool.pool,
+      reserve: pool.reserve,
+      max_lendable: pool.maxLendable,
+      available_funds: pool.available,
+      amount_lent: pool.lent,
       pending_savings: pendingSavings.cnt,
       pending_savings_amount: pendingSavings.total,
       pending_loans: pendingLoans.cnt,
@@ -90,648 +86,436 @@ router.get('/dashboard', (req, res) => {
       approved_loans: approvedLoans.cnt,
       approved_loans_amount: approvedLoans.total,
       in_progress_loans: inProgressLoans.cnt,
-      in_progress_loans_amount: inProgressLoans.total,
       rejected_loans: rejectedLoans.cnt,
+      completed_loans: completedLoans.cnt,
+      pending_repayments: pendingRepayments.cnt,
+      pending_repayments_amount: pendingRepayments.total,
+      pending_pauses: pendingPauses.cnt,
+      outstanding_fines: outstandingFines.total,
       active_meeting: activeMeeting,
-      meeting_attendance: meetingAttendanceCount
+      meeting_attendance: meetingAttendance
     }
   });
 });
 
 // ============================================================
-// MEMBERS MANAGEMENT
+// MEMBERS
 // ============================================================
-
-// GET /api/admin/members - All members
 router.get('/members', (req, res) => {
   const members = db.prepare(`
     SELECT
-      u.id, u.full_name, u.email, u.phone, u.address, u.date_of_birth,
-      u.occupation, u.next_of_kin, u.next_of_kin_phone, u.bvn,
-      u.credit_score, u.registration_fee_paid, u.role, u.status, u.created_at,
-      COALESCE((SELECT SUM(amount) FROM savings WHERE user_id = u.id AND type = 'weekly' AND status = 'approved'), 0) as weekly_savings,
-      COALESCE((SELECT SUM(amount) FROM savings WHERE user_id = u.id AND type = 'special' AND status = 'approved'), 0) as special_savings,
-      COALESCE((SELECT COUNT(*) FROM savings WHERE user_id = u.id AND type = 'weekly' AND status = 'approved'), 0) as weeks_saved,
-      COALESCE((SELECT COUNT(*) FROM savings WHERE user_id = u.id AND status = 'pending'), 0) as pending_savings,
-      COALESCE((SELECT COUNT(*) FROM meeting_attendance WHERE user_id = u.id), 0) as meetings_attended,
-      COALESCE((SELECT COUNT(*) FROM loans WHERE user_id = u.id AND status = 'rejected'), 0) as rejected_loans,
-      COALESCE((SELECT COUNT(*) FROM loans WHERE user_id = u.id AND status IN ('approved', 'in_progress')), 0) as active_loans
-    FROM users u
-    WHERE u.role = 'member'
+      u.id, u.full_name, u.email, u.phone, u.address, u.occupation,
+      u.bvn, u.credit_score, u.registration_fee_paid, u.weekly_savings_tier,
+      u.status, u.loan_rights_suspended, u.created_at, u.next_of_kin,
+      COALESCE((SELECT SUM(amount) FROM savings WHERE user_id=u.id AND type='weekly' AND status='approved'),0) as weekly_savings,
+      COALESCE((SELECT SUM(amount) FROM savings WHERE user_id=u.id AND type='special' AND status='approved'),0) as voluntary_savings,
+      COALESCE((SELECT COUNT(*) FROM savings WHERE user_id=u.id AND type='weekly' AND status='approved'),0) as weeks_saved,
+      COALESCE((SELECT COUNT(*) FROM savings WHERE user_id=u.id AND status='pending'),0) as pending_savings,
+      COALESCE((SELECT COUNT(*) FROM meeting_attendance WHERE user_id=u.id),0) as meetings_attended,
+      COALESCE((SELECT SUM(amount) FROM savings_fines WHERE user_id=u.id AND paid=0),0) as outstanding_fines
+    FROM users u WHERE u.role='member'
     ORDER BY u.created_at DESC
   `).all();
-
   res.json({ members });
 });
 
-// GET /api/admin/members/:id - Specific member with full details
 router.get('/members/:id', (req, res) => {
-  const member = db.prepare(`
-    SELECT
-      id, full_name, email, phone, address, date_of_birth,
-      occupation, next_of_kin, next_of_kin_phone, bvn,
-      credit_score, registration_fee_paid, role, status, created_at
-    FROM users WHERE id = ? AND role = 'member'
-  `).get(req.params.id);
+  const member = db.prepare(`SELECT * FROM users WHERE id=? AND role='member'`).get(req.params.id);
+  if (!member) return res.status(404).json({ error: 'Member not found' });
 
-  if (!member) {
-    return res.status(404).json({ error: 'Member not found' });
-  }
-
-  const savings = db.prepare(`
-    SELECT * FROM savings WHERE user_id = ? ORDER BY created_at DESC
-  `).all(req.params.id);
-
-  const loans = db.prepare(`
-    SELECT * FROM loans WHERE user_id = ? ORDER BY created_at DESC
-  `).all(req.params.id);
-
+  const savings = db.prepare(`SELECT * FROM savings WHERE user_id=? ORDER BY created_at DESC`).all(req.params.id);
+  const loans = db.prepare(`SELECT * FROM loans WHERE user_id=? ORDER BY created_at DESC`).all(req.params.id);
+  const repayments = db.prepare(`SELECT * FROM loan_repayments WHERE user_id=? ORDER BY created_at DESC`).all(req.params.id);
+  const fines = db.prepare(`SELECT * FROM savings_fines WHERE user_id=? ORDER BY created_at DESC`).all(req.params.id);
+  const loanFines = db.prepare(`SELECT * FROM loan_fines WHERE user_id=? ORDER BY created_at DESC`).all(req.params.id);
+  const pauses = db.prepare(`SELECT * FROM savings_pauses WHERE user_id=? ORDER BY created_at DESC`).all(req.params.id);
+  const welfare = db.prepare(`SELECT * FROM welfare_levies WHERE user_id=? ORDER BY created_at DESC`).all(req.params.id);
   const attendance = db.prepare(`
     SELECT ma.*, m.meeting_code, m.meeting_date
-    FROM meeting_attendance ma
-    JOIN meetings m ON ma.meeting_id = m.id
-    WHERE ma.user_id = ?
-    ORDER BY ma.created_at DESC
+    FROM meeting_attendance ma JOIN meetings m ON ma.meeting_id=m.id
+    WHERE ma.user_id=? ORDER BY ma.created_at DESC
   `).all(req.params.id);
 
-  const weeklySummary = db.prepare(`
-    SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as weeks
-    FROM savings WHERE user_id = ? AND type = 'weekly' AND status = 'approved'
-  `).get(req.params.id);
-
-  const specialSummary = db.prepare(`
-    SELECT COALESCE(SUM(amount), 0) as total
-    FROM savings WHERE user_id = ? AND type = 'special' AND status = 'approved'
-  `).get(req.params.id);
-
-  const pendingSummary = db.prepare(`
-    SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as cnt
-    FROM savings WHERE user_id = ? AND status = 'pending'
-  `).get(req.params.id);
+  const weeklySavings = db.prepare(`SELECT COALESCE(SUM(amount),0) as total, COUNT(*) as weeks FROM savings WHERE user_id=? AND type='weekly' AND status='approved'`).get(req.params.id);
+  const voluntarySavings = db.prepare(`SELECT COALESCE(SUM(amount),0) as total FROM savings WHERE user_id=? AND type='special' AND status='approved'`).get(req.params.id);
+  const pendingSavings = db.prepare(`SELECT COALESCE(SUM(amount),0) as total, COUNT(*) as cnt FROM savings WHERE user_id=? AND status='pending'`).get(req.params.id);
+  const outstandingFines = db.prepare(`SELECT COALESCE(SUM(amount),0) as total FROM savings_fines WHERE user_id=? AND paid=0`).get(req.params.id);
+  const totalApproved = weeklySavings.total + voluntarySavings.total;
+  const maxLoan = totalApproved * RULES.LOAN_MULTIPLIER;
 
   res.json({
-    member: {
-      ...member,
-      registration_fee_paid: !!member.registration_fee_paid
-    },
-    savings,
-    loans,
-    attendance,
+    member: { ...member, registration_fee_paid: !!member.registration_fee_paid, loan_rights_suspended: !!member.loan_rights_suspended },
+    savings, loans, repayments, fines, loanFines, pauses, welfare, attendance,
     savings_summary: {
-      weekly_total: weeklySummary.total,
-      weekly_weeks: weeklySummary.weeks,
-      special_total: specialSummary.total,
-      grand_total: weeklySummary.total + specialSummary.total,
-      pending_total: pendingSummary.total,
-      pending_count: pendingSummary.cnt,
-      max_loan_eligible: weeklySummary.total * 2,
-      meets_12_week_requirement: weeklySummary.weeks >= 12
+      weekly_total: weeklySavings.total,
+      weekly_weeks: weeklySavings.weeks,
+      voluntary_total: voluntarySavings.total,
+      total_approved: totalApproved,
+      pending_total: pendingSavings.total,
+      pending_count: pendingSavings.cnt,
+      max_loan_eligible: maxLoan,
+      meets_12_week_requirement: weeklySavings.weeks >= RULES.MIN_SAVINGS_WEEKS,
+      outstanding_fines: outstandingFines.total
     }
   });
 });
 
-// PUT /api/admin/members/:id/status - Update member status
 router.put('/members/:id/status', (req, res) => {
   const { status } = req.body;
-  if (!['pending', 'approved', 'rejected'].includes(status)) {
-    return res.status(400).json({ error: 'Invalid status' });
-  }
-
-  db.prepare(`UPDATE users SET status = ?, updated_at = datetime('now') WHERE id = ?`)
-    .run(status, req.params.id);
-
+  if (!['pending','approved','rejected'].includes(status)) return res.status(400).json({ error: 'Invalid status' });
+  db.prepare(`UPDATE users SET status=?, updated_at=datetime('now') WHERE id=?`).run(status, req.params.id);
   res.json({ message: `Member status updated to ${status}` });
+});
+
+// Suspend/restore loan rights (Clause 3.4 & 8.3)
+router.put('/members/:id/loan-rights', (req, res) => {
+  const { suspended, reason } = req.body;
+  db.prepare(`UPDATE users SET loan_rights_suspended=?, updated_at=datetime('now') WHERE id=?`).run(suspended ? 1 : 0, req.params.id);
+  res.json({ message: `Loan rights ${suspended ? 'suspended' : 'restored'} for member` });
+});
+
+// Add a savings fine (Clause 3.4)
+router.post('/members/:id/fine', (req, res) => {
+  const { amount, reason } = req.body;
+  const fineAmount = amount || RULES.SAVINGS_LATE_FINE;
+  const id = uuid();
+  db.prepare(`INSERT INTO savings_fines (id, user_id, amount, reason) VALUES (?,?,?,?)`).run(id, req.params.id, fineAmount, reason || 'Late savings fine');
+  res.json({ message: `Fine of N${fineAmount} added for member` });
+});
+
+// Mark fine as paid
+router.put('/fines/:id/paid', (req, res) => {
+  db.prepare(`UPDATE savings_fines SET paid=1 WHERE id=?`).run(req.params.id);
+  res.json({ message: 'Fine marked as paid' });
 });
 
 // ============================================================
 // SAVINGS APPROVAL
 // ============================================================
-
-// GET /api/admin/savings/pending - All pending savings across all members
 router.get('/savings/pending', (req, res) => {
-  const pendingSavings = db.prepare(`
+  const savings = db.prepare(`
     SELECT s.*, u.full_name, u.phone, u.email
-    FROM savings s
-    JOIN users u ON s.user_id = u.id
-    WHERE s.status = 'pending'
-    ORDER BY s.created_at ASC
+    FROM savings s JOIN users u ON s.user_id=u.id
+    WHERE s.status='pending' ORDER BY s.created_at ASC
   `).all();
-
-  res.json({ savings: pendingSavings });
+  res.json({ savings });
 });
 
-// PUT /api/admin/savings/:id - Approve or reject a savings entry
 router.put('/savings/:id', (req, res) => {
   const { status, admin_comment } = req.body;
+  if (!['approved','rejected'].includes(status)) return res.status(400).json({ error: 'Status must be approved or rejected' });
 
-  if (!['approved', 'rejected'].includes(status)) {
-    return res.status(400).json({ error: 'Status must be "approved" or "rejected"' });
-  }
+  const saving = db.prepare(`SELECT * FROM savings WHERE id=?`).get(req.params.id);
+  if (!saving) return res.status(404).json({ error: 'Savings record not found' });
+  if (saving.status !== 'pending') return res.status(400).json({ error: 'Already reviewed' });
 
-  const saving = db.prepare('SELECT * FROM savings WHERE id = ?').get(req.params.id);
-  if (!saving) {
-    return res.status(404).json({ error: 'Savings record not found' });
-  }
+  db.prepare(`UPDATE savings SET status=?, admin_comment=?, approved_by=?, approved_at=datetime('now') WHERE id=?`)
+    .run(status, admin_comment || null, req.user.id, req.params.id);
 
-  if (saving.status !== 'pending') {
-    return res.status(400).json({ error: 'This savings entry has already been reviewed' });
-  }
-
-  db.prepare(`
-    UPDATE savings SET
-      status = ?,
-      admin_comment = ?,
-      approved_by = ?,
-      approved_at = datetime('now')
-    WHERE id = ?
-  `).run(status, admin_comment || null, req.user.id, req.params.id);
-
-  res.json({
-    message: `Savings of N${Number(saving.amount).toLocaleString()} has been ${status}`,
-    saving: { id: req.params.id, status, amount: saving.amount }
-  });
+  res.json({ message: `Savings of N${Number(saving.amount).toLocaleString()} ${status}` });
 });
 
-// PUT /api/admin/savings/bulk-approve - Approve all pending savings for a member
+// Bulk approve all pending for one member
 router.put('/savings/bulk-approve', (req, res) => {
   const { user_id, status } = req.body;
+  if (!user_id || !['approved','rejected'].includes(status)) return res.status(400).json({ error: 'user_id and valid status required' });
+  const pending = db.prepare(`SELECT COUNT(*) as cnt, COALESCE(SUM(amount),0) as total FROM savings WHERE user_id=? AND status='pending'`).get(user_id);
+  db.prepare(`UPDATE savings SET status=?, approved_by=?, approved_at=datetime('now') WHERE user_id=? AND status='pending'`)
+    .run(status, req.user.id, user_id);
+  res.json({ message: `${pending.cnt} savings (N${Number(pending.total).toLocaleString()}) ${status}`, count: pending.cnt });
+});
 
-  if (!user_id || !['approved', 'rejected'].includes(status)) {
-    return res.status(400).json({ error: 'user_id and valid status required' });
+// ============================================================
+// SAVINGS PAUSE MANAGEMENT (Clause 10.2)
+// ============================================================
+router.get('/pauses/pending', (req, res) => {
+  const pauses = db.prepare(`
+    SELECT sp.*, u.full_name, u.phone
+    FROM savings_pauses sp JOIN users u ON sp.user_id=u.id
+    WHERE sp.status='pending' ORDER BY sp.created_at ASC
+  `).all();
+  res.json({ pauses });
+});
+
+router.put('/pauses/:id', (req, res) => {
+  const { status } = req.body;
+  if (!['approved','rejected'].includes(status)) return res.status(400).json({ error: 'Invalid status' });
+
+  const pause = db.prepare(`SELECT * FROM savings_pauses WHERE id=?`).get(req.params.id);
+  if (!pause) return res.status(404).json({ error: 'Pause not found' });
+
+  if (status === 'approved') {
+    const startDate = new Date().toISOString().split('T')[0];
+    const endDate = new Date(Date.now() + pause.weeks * 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    db.prepare(`UPDATE savings_pauses SET status='approved', start_date=?, end_date=? WHERE id=?`).run(startDate, endDate, req.params.id);
+    res.json({ message: `Pause approved: ${pause.weeks} weeks from ${startDate} to ${endDate}` });
+  } else {
+    db.prepare(`UPDATE savings_pauses SET status='rejected' WHERE id=?`).run(req.params.id);
+    res.json({ message: 'Pause request rejected' });
   }
-
-  const pending = db.prepare(`
-    SELECT COUNT(*) as cnt, COALESCE(SUM(amount), 0) as total
-    FROM savings WHERE user_id = ? AND status = 'pending'
-  `).get(user_id);
-
-  db.prepare(`
-    UPDATE savings SET
-      status = ?,
-      approved_by = ?,
-      approved_at = datetime('now')
-    WHERE user_id = ? AND status = 'pending'
-  `).run(status, req.user.id, user_id);
-
-  res.json({
-    message: `${pending.cnt} savings entries (N${Number(pending.total).toLocaleString()}) have been ${status}`,
-    count: pending.cnt,
-    total: pending.total
-  });
 });
 
 // ============================================================
 // LOAN MANAGEMENT
 // ============================================================
-
-// GET /api/admin/loans - All loan requests
 router.get('/loans', (req, res) => {
   const { status } = req.query;
   let query = `
-    SELECT
-      l.id, l.amount_requested, l.purpose, l.status, l.admin_comment,
-      l.created_at, l.updated_at,
-      u.id as user_id, u.full_name, u.phone, u.email,
-      COALESCE((SELECT SUM(amount) FROM savings WHERE user_id = u.id AND type = 'weekly'), 0) as weekly_savings,
-      COALESCE((SELECT SUM(amount) FROM savings WHERE user_id = u.id AND type = 'special'), 0) as special_savings,
-      COALESCE((SELECT COUNT(*) FROM savings WHERE user_id = u.id AND type = 'weekly'), 0) as weeks_saved,
-      COALESCE((SELECT COUNT(*) FROM meeting_attendance WHERE user_id = u.id), 0) as meetings_attended,
-      COALESCE((SELECT COUNT(*) FROM loans WHERE user_id = u.id AND status = 'rejected'), 0) as rejected_loans_count,
-      COALESCE((SELECT COUNT(*) FROM loans WHERE user_id = u.id AND status IN ('approved', 'in_progress')), 0) as completed_loans_count,
-      u.credit_score
-    FROM loans l
-    JOIN users u ON l.user_id = u.id
+    SELECT l.*, u.full_name, u.phone, u.email, u.credit_score,
+      COALESCE((SELECT SUM(amount) FROM savings WHERE user_id=u.id AND type='weekly' AND status='approved'),0) as weekly_savings,
+      COALESCE((SELECT SUM(amount) FROM savings WHERE user_id=u.id AND type='special' AND status='approved'),0) as voluntary_savings,
+      COALESCE((SELECT COUNT(*) FROM savings WHERE user_id=u.id AND type='weekly' AND status='approved'),0) as weeks_saved,
+      COALESCE((SELECT COUNT(*) FROM meeting_attendance WHERE user_id=u.id),0) as meetings_attended,
+      COALESCE((SELECT COUNT(*) FROM loans WHERE user_id=u.id AND status='rejected'),0) as rejected_loans_count,
+      (SELECT full_name FROM users WHERE id=l.guarantor1_id) as guarantor1_name,
+      (SELECT full_name FROM users WHERE id=l.guarantor2_id) as guarantor2_name,
+      COALESCE((SELECT SUM(amount) FROM loan_repayments WHERE loan_id=l.id AND status='approved'),0) as amount_repaid
+    FROM loans l JOIN users u ON l.user_id=u.id
   `;
   const params = [];
-  if (status) {
-    query += ` WHERE l.status = ?`;
-    params.push(status);
-  }
+  if (status) { query += ` WHERE l.status=?`; params.push(status); }
   query += ` ORDER BY l.created_at DESC`;
-
   const loans = db.prepare(query).all(...params);
-
   res.json({ loans });
 });
 
-// PUT /api/admin/loans/:id - Update loan status and comment
 router.put('/loans/:id', (req, res) => {
-  const { status, admin_comment } = req.body;
-
-  if (!['pending', 'approved', 'in_progress', 'rejected'].includes(status)) {
+  const { status, admin_comment, amount_approved, repayment_months } = req.body;
+  if (!['pending','approved','in_progress','rejected','completed'].includes(status)) {
     return res.status(400).json({ error: 'Invalid loan status' });
   }
 
-  const loan = db.prepare('SELECT * FROM loans WHERE id = ?').get(req.params.id);
-  if (!loan) {
-    return res.status(404).json({ error: 'Loan not found' });
-  }
+  const loan = db.prepare(`SELECT * FROM loans WHERE id=?`).get(req.params.id);
+  if (!loan) return res.status(404).json({ error: 'Loan not found' });
+
+  const approved = amount_approved || loan.amount_requested;
+  const processingFee = approved * RULES.PROCESSING_FEE_RATE;
+  const disbursed = approved - processingFee;
+  const months = repayment_months || loan.repayment_months || 3;
+  const instalment = approved / months;
+
+  let disbursedAt = loan.disbursed_at;
+  if (status === 'approved' && !disbursedAt) disbursedAt = new Date().toISOString();
 
   db.prepare(`
-    UPDATE loans SET
-      status = ?,
-      admin_comment = COALESCE(?, admin_comment),
-      reviewed_by = ?,
-      updated_at = datetime('now')
-    WHERE id = ?
-  `).run(status, admin_comment, req.user.id, req.params.id);
+    UPDATE loans SET status=?, admin_comment=COALESCE(?,admin_comment), reviewed_by=?,
+    amount_approved=?, processing_fee=?, amount_disbursed=?, repayment_months=?,
+    repayment_instalment=?, disbursed_at=?, updated_at=datetime('now')
+    WHERE id=?
+  `).run(status, admin_comment, req.user.id, approved, processingFee, disbursed, months, instalment, disbursedAt, req.params.id);
 
-  res.json({
-    message: `Loan status updated to ${status}`,
-    loan: { id: req.params.id, status, admin_comment }
-  });
+  // Auto-complete if fully repaid
+  if (status === 'in_progress') {
+    const repaid = db.prepare(`SELECT COALESCE(SUM(amount),0) as total FROM loan_repayments WHERE loan_id=? AND status='approved'`).get(req.params.id);
+    if (repaid.total >= approved) {
+      db.prepare(`UPDATE loans SET status='completed', updated_at=datetime('now') WHERE id=?`).run(req.params.id);
+    }
+  }
+
+  res.json({ message: `Loan status updated to ${status}. Processing fee: N${processingFee.toLocaleString()}. Net disbursement: N${disbursed.toLocaleString()}.` });
 });
 
 // ============================================================
-// LOAN SUGGESTION SYSTEM
+// LOAN REPAYMENTS APPROVAL
 // ============================================================
+router.get('/repayments/pending', (req, res) => {
+  const repayments = db.prepare(`
+    SELECT r.*, u.full_name, u.phone,
+      l.amount_approved, l.amount_disbursed,
+      COALESCE((SELECT SUM(amount) FROM loan_repayments WHERE loan_id=l.id AND status='approved'),0) as already_repaid
+    FROM loan_repayments r
+    JOIN users u ON r.user_id=u.id
+    JOIN loans l ON r.loan_id=l.id
+    WHERE r.status='pending' ORDER BY r.created_at ASC
+  `).all();
+  res.json({ repayments });
+});
 
-// GET /api/admin/loans/:id/suggestion - AI-assisted loan suggestion
-router.get('/loans/:id/suggestion', (req, res) => {
-  const loan = db.prepare(`
-    SELECT l.*, u.full_name, u.credit_score
-    FROM loans l
-    JOIN users u ON l.user_id = u.id
-    WHERE l.id = ?
-  `).get(req.params.id);
+router.put('/repayments/:id', (req, res) => {
+  const { status } = req.body;
+  if (!['approved','rejected'].includes(status)) return res.status(400).json({ error: 'Invalid status' });
 
-  if (!loan) {
-    return res.status(404).json({ error: 'Loan not found' });
+  const repayment = db.prepare(`SELECT * FROM loan_repayments WHERE id=?`).get(req.params.id);
+  if (!repayment) return res.status(404).json({ error: 'Repayment not found' });
+
+  db.prepare(`UPDATE loan_repayments SET status=?, approved_by=? WHERE id=?`).run(status, req.user.id, req.params.id);
+
+  // Check if loan is now fully repaid
+  if (status === 'approved') {
+    const loan = db.prepare(`SELECT * FROM loans WHERE id=?`).get(repayment.loan_id);
+    const totalRepaid = db.prepare(`SELECT COALESCE(SUM(amount),0) as total FROM loan_repayments WHERE loan_id=? AND status='approved'`).get(repayment.loan_id);
+    if (loan && loan.amount_approved && totalRepaid.total >= loan.amount_approved) {
+      db.prepare(`UPDATE loans SET status='completed', updated_at=datetime('now') WHERE id=?`).run(repayment.loan_id);
+    }
   }
 
-  // Gather member performance data
-  const weeklySavings = db.prepare(`
-    SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as weeks
-    FROM savings WHERE user_id = ? AND type = 'weekly' AND status = 'approved'
-  `).get(loan.user_id);
+  res.json({ message: `Repayment of N${Number(repayment.amount).toLocaleString()} ${status}` });
+});
 
-  const meetingsAttended = db.prepare(`
-    SELECT COUNT(*) as cnt, COALESCE(SUM(payment_amount), 0) as total_paid
-    FROM meeting_attendance WHERE user_id = ?
-  `).get(loan.user_id);
+// ============================================================
+// LOAN SUGGESTION (AI-assisted — uses all approved savings per clause 5.1)
+// ============================================================
+router.get('/loans/:id/suggestion', (req, res) => {
+  const loan = db.prepare(`SELECT l.*, u.full_name, u.credit_score FROM loans l JOIN users u ON l.user_id=u.id WHERE l.id=?`).get(req.params.id);
+  if (!loan) return res.status(404).json({ error: 'Loan not found' });
 
+  const weeklySavings = db.prepare(`SELECT COALESCE(SUM(amount),0) as total, COUNT(*) as weeks FROM savings WHERE user_id=? AND type='weekly' AND status='approved'`).get(loan.user_id);
+  const voluntarySavings = db.prepare(`SELECT COALESCE(SUM(amount),0) as total FROM savings WHERE user_id=? AND type='special' AND status='approved'`).get(loan.user_id);
+  const totalSavings = weeklySavings.total + voluntarySavings.total;
+  const meetingsAttended = db.prepare(`SELECT COUNT(*) as cnt FROM meeting_attendance WHERE user_id=?`).get(loan.user_id);
   const totalMeetings = db.prepare(`SELECT COUNT(*) as cnt FROM meetings`).get();
-  const attendanceRate = totalMeetings.cnt > 0
-    ? (meetingsAttended.cnt / totalMeetings.cnt) * 100
-    : 0;
+  const attendanceRate = totalMeetings.cnt > 0 ? (meetingsAttended.cnt / totalMeetings.cnt) * 100 : 0;
+  const rejectedLoans = db.prepare(`SELECT COUNT(*) as cnt FROM loans WHERE user_id=? AND status='rejected'`).get(loan.user_id);
+  const completedLoans = db.prepare(`SELECT COUNT(*) as cnt FROM loans WHERE user_id=? AND status='completed'`).get(loan.user_id);
+  const outstandingFines = db.prepare(`SELECT COALESCE(SUM(amount),0) as total FROM savings_fines WHERE user_id=? AND paid=0`).get(loan.user_id);
+  const pool = getPoolStats();
 
-  const rejectedLoans = db.prepare(`
-    SELECT COUNT(*) as cnt FROM loans WHERE user_id = ? AND status = 'rejected'
-  `).get(loan.user_id);
-
-  const completedLoans = db.prepare(`
-    SELECT COUNT(*) as cnt FROM loans WHERE user_id = ? AND status IN ('approved', 'in_progress')
-  `).get(loan.user_id);
-
-  // Cooperative available funds (approved savings only)
-  const cooperativeFunds = db.prepare(`
-    SELECT
-      COALESCE(SUM(s.amount), 0) as total_savings,
-      COALESCE((SELECT SUM(amount_requested) FROM loans WHERE status IN ('approved', 'in_progress')), 0) as outstanding_loans
-    FROM savings s WHERE s.status = 'approved'
-  `).get();
-
-  const availableFunds = cooperativeFunds.total_savings - cooperativeFunds.outstanding_loans;
-
-  // Calculate suggestion score (0-100)
   let score = 0;
   const factors = [];
 
-  // Factor 1: Credit score (max 25 points)
-  const creditScorePoints = Math.min((loan.credit_score / 850) * 25, 25);
-  score += creditScorePoints;
-  factors.push({
-    factor: 'Credit Score',
-    detail: `Score: ${loan.credit_score}/850`,
-    points: creditScorePoints.toFixed(1),
-    max_points: 25
-  });
+  const c1 = Math.min((loan.credit_score / 850) * 25, 25);
+  score += c1;
+  factors.push({ factor: 'Credit Score', detail: `${loan.credit_score}/850`, points: c1.toFixed(1), max_points: 25 });
 
-  // Factor 2: Savings consistency - weeks saved (max 20 points)
-  const weeksPoints = Math.min((weeklySavings.weeks / 24) * 20, 20); // 24+ weeks = full marks
-  score += weeksPoints;
-  factors.push({
-    factor: 'Savings Consistency',
-    detail: `${weeklySavings.weeks} weeks of weekly savings`,
-    points: weeksPoints.toFixed(1),
-    max_points: 20
-  });
+  const c2 = Math.min((weeklySavings.weeks / 24) * 20, 20);
+  score += c2;
+  factors.push({ factor: 'Savings Consistency', detail: `${weeklySavings.weeks} compulsory weeks`, points: c2.toFixed(1), max_points: 20 });
 
-  // Factor 3: Loan-to-savings ratio (max 20 points)
-  const maxLoan = weeklySavings.total * 2;
-  const loanRatio = maxLoan > 0 ? loan.amount_requested / maxLoan : 1;
-  // Lower ratio = better (asking for less relative to max = safer)
-  const ratioPoints = Math.max(0, 20 - (loanRatio * 20));
-  score += ratioPoints;
-  factors.push({
-    factor: 'Loan-to-Savings Ratio',
-    detail: `Requesting N${loan.amount_requested.toLocaleString()} of max N${maxLoan.toLocaleString()} (${(loanRatio * 100).toFixed(1)}%)`,
-    points: ratioPoints.toFixed(1),
-    max_points: 20
-  });
+  const maxLoan = totalSavings * RULES.LOAN_MULTIPLIER;
+  const ratio = maxLoan > 0 ? loan.amount_requested / maxLoan : 1;
+  const c3 = Math.max(0, 20 - ratio * 20);
+  score += c3;
+  factors.push({ factor: 'Loan-to-Savings Ratio', detail: `Requesting N${loan.amount_requested.toLocaleString()} of max N${maxLoan.toLocaleString()} (${(ratio*100).toFixed(1)}%)`, points: c3.toFixed(1), max_points: 20 });
 
-  // Factor 4: Meeting attendance (max 15 points)
-  const attendancePoints = (attendanceRate / 100) * 15;
-  score += attendancePoints;
-  factors.push({
-    factor: 'Meeting Attendance',
-    detail: `${meetingsAttended.cnt}/${totalMeetings.cnt} meetings (${attendanceRate.toFixed(1)}%)`,
-    points: attendancePoints.toFixed(1),
-    max_points: 15
-  });
+  const c4 = (attendanceRate / 100) * 15;
+  score += c4;
+  factors.push({ factor: 'Meeting Attendance', detail: `${meetingsAttended.cnt}/${totalMeetings.cnt} meetings`, points: c4.toFixed(1), max_points: 15 });
 
-  // Factor 5: Loan history (max 10 points)
-  let loanHistoryPoints = 10;
-  if (rejectedLoans.cnt > 0) {
-    loanHistoryPoints = Math.max(0, 10 - (rejectedLoans.cnt * 5));
-  }
-  if (completedLoans.cnt > 0) {
-    loanHistoryPoints = Math.min(10, loanHistoryPoints + (completedLoans.cnt * 2));
-  }
-  score += loanHistoryPoints;
-  factors.push({
-    factor: 'Loan History',
-    detail: `${completedLoans.cnt} completed, ${rejectedLoans.cnt} rejected`,
-    points: loanHistoryPoints.toFixed(1),
-    max_points: 10
-  });
+  let c5 = 10 + completedLoans.cnt * 2 - rejectedLoans.cnt * 5 - (outstandingFines.total > 0 ? 10 : 0);
+  c5 = Math.min(10, Math.max(0, c5));
+  score += c5;
+  factors.push({ factor: 'Loan & Fine History', detail: `${completedLoans.cnt} completed, ${rejectedLoans.cnt} rejected, fines: N${outstandingFines.total}`, points: c5.toFixed(1), max_points: 10 });
 
-  // Factor 6: Cooperative available funds (max 10 points)
-  let fundsPoints = 0;
-  if (availableFunds >= loan.amount_requested * 2) {
-    fundsPoints = 10; // Plenty of funds
-  } else if (availableFunds >= loan.amount_requested) {
-    fundsPoints = 6; // Enough for this loan
-  } else if (availableFunds >= loan.amount_requested * 0.5) {
-    fundsPoints = 3; // Tight
-  } else {
-    fundsPoints = 0; // Insufficient
-  }
-  score += fundsPoints;
-  factors.push({
-    factor: 'Cooperative Available Funds',
-    detail: `N${availableFunds.toLocaleString()} available, loan requests N${loan.amount_requested.toLocaleString()}`,
-    points: fundsPoints.toFixed(1),
-    max_points: 10
-  });
+  let c6 = pool.available >= loan.amount_requested * 2 ? 10 : pool.available >= loan.amount_requested ? 6 : pool.available > 0 ? 3 : 0;
+  score += c6;
+  factors.push({ factor: 'Cooperative Funds', detail: `N${Math.floor(pool.available).toLocaleString()} available (70% lending cap maintained)`, points: c6.toFixed(1), max_points: 10 });
 
   const totalScore = Math.round(score);
+  const canAfford = pool.available >= loan.amount_requested;
+  const hasFines = outstandingFines.total > 0;
+  const enoughWeeks = weeklySavings.weeks >= RULES.MIN_SAVINGS_WEEKS;
 
-  // Generate recommendation
-  let recommendation = '';
-  let recommendationLevel = '';
-  let canAfford = availableFunds >= loan.amount_requested;
-
-  if (!canAfford) {
-    recommendation = `REJECT: The cooperative does not have sufficient funds (N${availableFunds.toLocaleString()} available) to cover this loan of N${loan.amount_requested.toLocaleString()}.`;
-    recommendationLevel = 'reject';
+  let recommendation, level;
+  if (!enoughWeeks) {
+    recommendation = `REJECT: Member has only ${weeklySavings.weeks} compulsory weeks — 12 required (Clause 4.1)`;
+    level = 'reject';
+  } else if (hasFines) {
+    recommendation = `REJECT: Member has outstanding fines of N${outstandingFines.total} — must be cleared first (Clause 4.2)`;
+    level = 'reject';
+  } else if (!canAfford) {
+    recommendation = `HOLD: Insufficient funds (N${Math.floor(pool.available).toLocaleString()} available). Place on waiting list (Clause 9.4)`;
+    level = 'in_progress';
   } else if (totalScore >= 75) {
-    recommendation = `STRONGLY ACCEPT: This member shows excellent financial behavior with a score of ${totalScore}/100. Credit score is good, savings are consistent, and attendance is regular. The cooperative has sufficient funds to approve this loan.`;
-    recommendationLevel = 'accept';
+    recommendation = `STRONGLY APPROVE: Excellent score ${totalScore}/100 — clean record, strong savings, regular attendance`;
+    level = 'accept';
   } else if (totalScore >= 60) {
-    recommendation = `ACCEPT: This member has a good score of ${totalScore}/100. The loan is reasonable relative to savings and the cooperative can afford it. Consider approving with monitoring.`;
-    recommendationLevel = 'accept';
+    recommendation = `APPROVE: Good score ${totalScore}/100 — meets all requirements`;
+    level = 'accept';
   } else if (totalScore >= 45) {
-    recommendation = `IN PROGRESS: This member has a moderate score of ${totalScore}/100. There are some concerns. Consider requesting additional information or collateral before approval. The loan could be placed in progress for further review.`;
-    recommendationLevel = 'in_progress';
+    recommendation = `REVIEW: Moderate score ${totalScore}/100 — verify guarantors and consider reduced amount`;
+    level = 'in_progress';
   } else {
-    recommendation = `REJECT: This member has a low score of ${totalScore}/100. Concerns include poor credit score, insufficient savings, irregular attendance, or bad loan history. The cooperative should not approve this loan at this time.`;
-    recommendationLevel = 'reject';
-  }
-
-  // Batch suggestion: how many of all pending loans can be accepted
-  const allPendingLoans = db.prepare(`
-    SELECT l.id, l.amount_requested, l.user_id, u.credit_score
-    FROM loans l
-    JOIN users u ON l.user_id = u.id
-    WHERE l.status = 'pending'
-    ORDER BY l.created_at ASC
-  `).all();
-
-  // Simulate evaluating all pending loans to suggest how many can be accepted
-  let remainingFunds = availableFunds;
-  const batchSuggestion = {
-    total_pending: allPendingLoans.length,
-    can_accept: 0,
-    should_reject: 0,
-    should_hold: 0,
-    total_acceptable_amount: 0,
-    details: []
-  };
-
-  for (const pl of allPendingLoans) {
-    const plWeeklySavings = db.prepare(`
-      SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as weeks
-      FROM savings WHERE user_id = ? AND type = 'weekly'
-    `).get(pl.user_id);
-
-    const plAttendance = db.prepare(`
-      SELECT COUNT(*) as cnt FROM meeting_attendance WHERE user_id = ?
-    `).get(pl.user_id);
-
-    const plRejected = db.prepare(`
-      SELECT COUNT(*) as cnt FROM loans WHERE user_id = ? AND status = 'rejected'
-    `).get(pl.user_id);
-
-    // Quick score for batch
-    let quickScore = 0;
-    quickScore += Math.min((pl.credit_score / 850) * 30, 30);
-    quickScore += Math.min((plWeeklySavings.weeks / 24) * 25, 25);
-    quickScore += plWeeklySavings.weeks >= 12 ? 15 : 0;
-    quickScore += (plAttendance.cnt / Math.max(totalMeetings.cnt, 1)) * 15;
-    quickScore += plRejected.cnt === 0 ? 15 : Math.max(0, 15 - plRejected.cnt * 5);
-    quickScore = Math.round(quickScore);
-
-    if (quickScore >= 60 && remainingFunds >= pl.amount_requested) {
-      batchSuggestion.can_accept++;
-      batchSuggestion.total_acceptable_amount += pl.amount_requested;
-      remainingFunds -= pl.amount_requested;
-      batchSuggestion.details.push({
-        loan_id: pl.id,
-        score: quickScore,
-        action: 'accept',
-        amount: pl.amount_requested
-      });
-    } else if (quickScore < 45) {
-      batchSuggestion.should_reject++;
-      batchSuggestion.details.push({
-        loan_id: pl.id,
-        score: quickScore,
-        action: 'reject',
-        amount: pl.amount_requested
-      });
-    } else {
-      batchSuggestion.should_hold++;
-      batchSuggestion.details.push({
-        loan_id: pl.id,
-        score: quickScore,
-        action: 'hold',
-        amount: pl.amount_requested
-      });
-    }
+    recommendation = `REJECT: Low score ${totalScore}/100 — poor history, irregular savings or attendance`;
+    level = 'reject';
   }
 
   res.json({
-    loan: {
-      id: loan.id,
-      member: loan.full_name,
-      amount_requested: loan.amount_requested,
-      purpose: loan.purpose,
-      created_at: loan.created_at
-    },
+    loan: { id: loan.id, member: loan.full_name, amount_requested: loan.amount_requested, purpose: loan.purpose, created_at: loan.created_at },
     suggestion: {
-      total_score: totalScore,
-      max_score: 100,
-      recommendation,
-      recommendation_level: recommendationLevel,
-      can_afford: canAfford,
-      factors: factors,
+      total_score: totalScore, max_score: 100, recommendation, recommendation_level: level,
+      can_afford: canAfford, factors,
       member_performance: {
-        credit_score: loan.credit_score,
-        weekly_savings_total: weeklySavings.total,
-        weeks_saved: weeklySavings.weeks,
-        max_loan_eligible: weeklySavings.total * 2,
-        meetings_attended: meetingsAttended.cnt,
-        total_meetings: totalMeetings.cnt,
-        attendance_rate: attendanceRate.toFixed(1) + '%',
-        rejected_loans: rejectedLoans.cnt,
-        completed_loans: completedLoans.cnt
+        credit_score: loan.credit_score, weekly_savings: weeklySavings.total,
+        voluntary_savings: voluntarySavings.total, total_savings: totalSavings,
+        weeks_saved: weeklySavings.weeks, max_loan_eligible: maxLoan,
+        meetings_attended: meetingsAttended.cnt, attendance_rate: attendanceRate.toFixed(1) + '%',
+        rejected_loans: rejectedLoans.cnt, completed_loans: completedLoans.cnt, outstanding_fines: outstandingFines.total
       },
-      cooperative_funds: {
-        total_savings: cooperativeFunds.total_savings,
-        outstanding_loans: cooperativeFunds.outstanding_loans,
-        available_funds: availableFunds
-      }
-    },
-    batch_suggestion: batchSuggestion
-  });
-});
-
-// ============================================================
-// MEETING MANAGEMENT
-// ============================================================
-
-// POST /api/admin/meetings - Create a new Sunday meeting
-router.post('/meetings', (req, res) => {
-  const { meeting_date } = req.body;
-
-  // Generate a random 6-character meeting code
-  const meetingCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-
-  // Deactivate previous meetings
-  db.prepare(`UPDATE meetings SET is_active = 0`).run();
-
-  const id = uuid();
-  db.prepare(`
-    INSERT INTO meetings (id, meeting_code, meeting_date)
-    VALUES (?, ?, ?)
-  `).run(id, meetingCode, meeting_date || new Date().toISOString().split('T')[0]);
-
-  res.status(201).json({
-    message: 'Meeting created successfully. Share the meeting code with members.',
-    meeting: {
-      id, meeting_code: meetingCode, meeting_date: meeting_date, is_active: 1
+      cooperative_funds: { pool: pool.pool, reserve: pool.reserve, max_lendable: pool.maxLendable, lent: pool.lent, available: pool.available }
     }
   });
 });
 
-// GET /api/admin/meetings - List all meetings
+// Batch suggestions
+router.get('/loans/suggestions/all', (req, res) => {
+  const pending = db.prepare(`
+    SELECT l.id, l.amount_requested, l.purpose, l.created_at,
+      u.id as user_id, u.full_name, u.credit_score,
+      COALESCE((SELECT SUM(amount) FROM savings WHERE user_id=u.id AND status='approved'),0) as total_savings,
+      COALESCE((SELECT COUNT(*) FROM savings WHERE user_id=u.id AND type='weekly' AND status='approved'),0) as weeks_saved,
+      COALESCE((SELECT COUNT(*) FROM meeting_attendance WHERE user_id=u.id),0) as meetings_attended,
+      COALESCE((SELECT COUNT(*) FROM loans WHERE user_id=u.id AND status='rejected'),0) as rejected_count,
+      COALESCE((SELECT SUM(amount) FROM savings_fines WHERE user_id=u.id AND paid=0),0) as fines
+    FROM loans l JOIN users u ON l.user_id=u.id
+    WHERE l.status='pending' ORDER BY l.created_at ASC
+  `).all();
+
+  const pool = getPoolStats();
+  const totalMeetings = db.prepare(`SELECT COUNT(*) as cnt FROM meetings`).get();
+  let remaining = pool.available;
+
+  const suggestions = pending.map(l => {
+    let s = Math.min((l.credit_score/850)*25,25) + Math.min((l.weeks_saved/24)*20,20) +
+            (l.meetings_attended/Math.max(totalMeetings.cnt,1))*15 +
+            Math.max(0, 10 - l.rejected_count*5) + (l.fines > 0 ? 0 : 5);
+    s = Math.round(s + (remaining >= l.amount_requested ? 10 : 0) + (l.weeks_saved >= 12 ? 15 : 0));
+    let action = l.fines > 0 || l.weeks_saved < 12 ? 'reject' : (s >= 60 && remaining >= l.amount_requested) ? 'accept' : s >= 45 ? 'hold' : 'reject';
+    if (action === 'accept') remaining -= l.amount_requested;
+    return { loan_id: l.id, member_name: l.full_name, amount: l.amount_requested, score: s, action, can_afford: remaining >= 0, weeks_saved: l.weeks_saved, total_savings: l.total_savings, outstanding_fines: l.fines };
+  });
+
+  res.json({
+    suggestions,
+    summary: {
+      total_pending: pending.length,
+      accept: suggestions.filter(s=>s.action==='accept').length,
+      hold: suggestions.filter(s=>s.action==='hold').length,
+      reject: suggestions.filter(s=>s.action==='reject').length,
+      total_acceptable_amount: suggestions.filter(s=>s.action==='accept').reduce((sum,s)=>sum+s.amount,0),
+      available_funds: pool.available, remaining_after_acceptance: remaining
+    }
+  });
+});
+
+// ============================================================
+// MEETINGS
+// ============================================================
+router.post('/meetings', (req, res) => {
+  const { meeting_date } = req.body;
+  const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+  db.prepare(`UPDATE meetings SET is_active=0`).run();
+  const id = uuid();
+  db.prepare(`INSERT INTO meetings (id, meeting_code, meeting_date) VALUES (?,?,?)`).run(id, code, meeting_date || new Date().toISOString().split('T')[0]);
+  res.status(201).json({ message: 'Meeting created. Code: ' + code, meeting: { id, meeting_code: code, meeting_date, is_active: 1 } });
+});
+
 router.get('/meetings', (req, res) => {
   const meetings = db.prepare(`
     SELECT m.*,
-      (SELECT COUNT(*) FROM meeting_attendance WHERE meeting_id = m.id) as attendance_count,
-      (SELECT COALESCE(SUM(payment_amount), 0) FROM meeting_attendance WHERE meeting_id = m.id) as total_payments
-    FROM meetings m
-    ORDER BY m.created_at DESC
+      (SELECT COUNT(*) FROM meeting_attendance WHERE meeting_id=m.id) as attendance_count,
+      (SELECT COALESCE(SUM(payment_amount),0) FROM meeting_attendance WHERE meeting_id=m.id) as total_payments
+    FROM meetings m ORDER BY m.created_at DESC
   `).all();
-
   res.json({ meetings });
 });
 
-// GET /api/admin/meetings/:id/attendance
 router.get('/meetings/:id/attendance', (req, res) => {
   const attendance = db.prepare(`
-    SELECT ma.*, u.full_name, u.phone, u.email
-    FROM meeting_attendance ma
-    JOIN users u ON ma.user_id = u.id
-    WHERE ma.meeting_id = ?
-    ORDER BY ma.created_at ASC
+    SELECT ma.*, u.full_name, u.phone
+    FROM meeting_attendance ma JOIN users u ON ma.user_id=u.id
+    WHERE ma.meeting_id=? ORDER BY ma.created_at ASC
   `).all(req.params.id);
-
   res.json({ attendance });
-});
-
-// GET /api/admin/loans/suggestions/all - Get batch suggestions for all pending loans
-router.get('/loans/suggestions/all', (req, res) => {
-  const pendingLoans = db.prepare(`
-    SELECT l.id, l.amount_requested, l.purpose, l.created_at,
-      u.id as user_id, u.full_name, u.phone, u.email, u.credit_score,
-      COALESCE((SELECT SUM(amount) FROM savings WHERE user_id = u.id AND type = 'weekly' AND status = 'approved'), 0) as weekly_savings,
-      COALESCE((SELECT COUNT(*) FROM savings WHERE user_id = u.id AND type = 'weekly' AND status = 'approved'), 0) as weeks_saved,
-      COALESCE((SELECT COUNT(*) FROM meeting_attendance WHERE user_id = u.id), 0) as meetings_attended,
-      COALESCE((SELECT COUNT(*) FROM loans WHERE user_id = u.id AND status = 'rejected'), 0) as rejected_loans_count,
-      COALESCE((SELECT COUNT(*) FROM loans WHERE user_id = u.id AND status IN ('approved', 'in_progress')), 0) as completed_loans_count
-    FROM loans l
-    JOIN users u ON l.user_id = u.id
-    WHERE l.status = 'pending'
-    ORDER BY l.created_at ASC
-  `).all();
-
-  const cooperativeFunds = db.prepare(`
-    SELECT
-      COALESCE(SUM(s.amount), 0) as total_savings,
-      COALESCE((SELECT SUM(amount_requested) FROM loans WHERE status IN ('approved', 'in_progress')), 0) as outstanding_loans
-    FROM savings s WHERE s.status = 'approved'
-  `).get();
-
-  const availableFunds = cooperativeFunds.total_savings - cooperativeFunds.outstanding_loans;
-  const totalMeetings = db.prepare(`SELECT COUNT(*) as cnt FROM meetings`).get();
-
-  let remainingFunds = availableFunds;
-  const suggestions = pendingLoans.map(loan => {
-    let quickScore = 0;
-    quickScore += Math.min((loan.credit_score / 850) * 30, 30);
-    quickScore += Math.min((loan.weeks_saved / 24) * 25, 25);
-    quickScore += loan.weeks_saved >= 12 ? 15 : 0;
-    quickScore += (loan.meetings_attended / Math.max(totalMeetings.cnt, 1)) * 15;
-    quickScore += loan.rejected_loans_count === 0 ? 15 : Math.max(0, 15 - loan.rejected_loans_count * 5);
-    quickScore = Math.round(quickScore);
-
-    let action = 'reject';
-    let canAfford = remainingFunds >= loan.amount_requested;
-
-    if (quickScore >= 60 && canAfford) {
-      action = 'accept';
-      remainingFunds -= loan.amount_requested;
-    } else if (quickScore >= 45) {
-      action = 'hold';
-    }
-
-    return {
-      loan_id: loan.id,
-      member_name: loan.full_name,
-      amount: loan.amount_requested,
-      score: quickScore,
-      action,
-      can_afford: canAfford,
-      weeks_saved: loan.weeks_saved,
-      weekly_savings: loan.weekly_savings,
-      credit_score: loan.credit_score,
-      max_loan: loan.weekly_savings * 2
-    };
-  });
-
-  const summary = {
-    total_pending: pendingLoans.length,
-    accept: suggestions.filter(s => s.action === 'accept').length,
-    hold: suggestions.filter(s => s.action === 'hold').length,
-    reject: suggestions.filter(s => s.action === 'reject').length,
-    total_acceptable_amount: suggestions.filter(s => s.action === 'accept').reduce((sum, s) => sum + s.amount, 0),
-    available_funds: availableFunds,
-    remaining_after_acceptance: remainingFunds
-  };
-
-  res.json({ suggestions, summary });
 });
 
 module.exports = router;

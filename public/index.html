@@ -3,566 +3,371 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cooperative Society Management System</title>
+  <title>Cooperative Thrift & Credit Society</title>
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body>
 
-  <!-- ===== Navbar ===== -->
-  <nav class="navbar">
-    <div class="navbar-brand">
-      <i class="fas fa-hand-holding-usd"></i>
-      Cooperative Society
-    </div>
-    <div class="navbar-links" id="navLinks">
-      <!-- Dynamically populated -->
-    </div>
-  </nav>
+<nav class="navbar">
+  <div class="navbar-brand"><i class="fas fa-hand-holding-usd"></i> Cooperative Society</div>
+  <div class="navbar-links" id="navLinks"></div>
+</nav>
 
-  <!-- ===== Alert Container ===== -->
-  <div id="alertContainer" class="page" style="display:none;padding:0;max-width:none;">
-    <div id="globalAlert" class="alert" style="max-width:1200px;margin:16px auto;"></div>
-  </div>
+<div id="alertContainer" style="display:none;padding:0 24px;">
+  <div id="globalAlert" class="alert" style="max-width:1200px;margin:12px auto;"></div>
+</div>
 
-  <!-- ===== Landing Page ===== -->
-  <div id="landingPage" class="page active">
-    <div class="hero">
-      <h1>Welcome to Our Cooperative Society</h1>
-      <p>Join our cooperative to build savings, access loans, and grow together. Register today and start your journey towards financial empowerment.</p>
-      <div class="hero-buttons">
-        <button class="btn btn-primary" onclick="showPage('registerPage')">
-          <i class="fas fa-user-plus"></i> Register Now
-        </button>
-        <button class="btn btn-outline" onclick="showPage('loginPage')">
-          <i class="fas fa-sign-in-alt"></i> Login
-        </button>
-      </div>
-    </div>
-
-    <div class="features-grid">
-      <div class="feature-card">
-        <div class="icon"><i class="fas fa-piggy-bank"></i></div>
-        <h3>Weekly Savings</h3>
-        <p>Build your savings week by week. Your weekly contributions qualify you for loans after 12 weeks.</p>
-      </div>
-      <div class="feature-card">
-        <div class="icon"><i class="fas fa-hand-holding-usd"></i></div>
-        <h3>Loan Access</h3>
-        <p>Access loans up to 2x your total weekly savings after 12 weeks of consistent contributions.</p>
-      </div>
-      <div class="feature-card">
-        <div class="icon"><i class="fas fa-shield-alt"></i></div>
-        <h3>Credit Check</h3>
-        <p>We verify your credit score during registration to ensure responsible lending.</p>
-      </div>
-      <div class="feature-card">
-        <div class="icon"><i class="fas fa-users"></i></div>
-        <h3>Sunday Meetings</h3>
-        <p>Weekly Sunday meetings with check-in codes and payments to keep members engaged.</p>
-      </div>
-    </div>
-
-    <div class="contact-info">
-      <h3>Contact Us</h3>
-      <p><i class="fas fa-phone"></i> +234 803 218 0923</p>
-      <p><i class="fas fa-phone"></i> +234 810 875 9222</p>
+<!-- LANDING -->
+<div id="landingPage" class="page active">
+  <div class="hero">
+    <h1>Welcome to Our Cooperative Thrift & Credit Society</h1>
+    <p>A closed, member-owned savings and credit group. Save weekly, build your pool, and access interest-free loans after 12 weeks.</p>
+    <div class="hero-buttons">
+      <button class="btn btn-primary" onclick="showPage('registerPage')"><i class="fas fa-user-plus"></i> Register Now</button>
+      <button class="btn btn-outline" onclick="showPage('loginPage')"><i class="fas fa-sign-in-alt"></i> Login</button>
     </div>
   </div>
+  <div class="features-grid">
+    <div class="feature-card"><div class="icon"><i class="fas fa-piggy-bank"></i></div><h3>Interest-Free Loans</h3><p>Access loans up to 2x your total savings. No interest — only a 1% processing fee (Clause 5.1 & 5.4).</p></div>
+    <div class="feature-card"><div class="icon"><i class="fas fa-shield-alt"></i></div><h3>Credit Verified</h3><p>BVN-based credit score check ensures all members are trustworthy (Clause 2.1).</p></div>
+    <div class="feature-card"><div class="icon"><i class="fas fa-users"></i></div><h3>12-Week Commitment</h3><p>Save for 12 consecutive weeks, then access loans up to 2x your savings (Clause 4.1).</p></div>
+    <div class="feature-card"><div class="icon"><i class="fas fa-lock"></i></div><h3>Your Savings are Safe</h3><p>25% pool reserve never lent out. Maximum 70% lendable at any time (Clause 9).</p></div>
+  </div>
+  <div class="contact-info">
+    <h3>Contact Us</h3>
+    <p><i class="fas fa-phone"></i> +234 803 218 0923 &nbsp;|&nbsp; <i class="fas fa-phone"></i> +234 810 875 9222</p>
+  </div>
+</div>
 
-  <!-- ===== Register Page ===== -->
-  <div id="registerPage" class="page">
-    <div class="auth-container">
-      <div class="auth-card">
-        <h2><i class="fas fa-user-plus"></i> Member Registration</h2>
-        <p class="subtitle">Fill in your details to join our cooperative. Registration fee is N5,000.</p>
-        <div id="registerAlert"></div>
-        <form id="registerForm">
-          <div class="form-row">
-            <div class="form-group">
-              <label>Full Name *</label>
-              <input type="text" name="full_name" required placeholder="John Doe">
-            </div>
-            <div class="form-group">
-              <label>Email *</label>
-              <input type="email" name="email" required placeholder="john@email.com">
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Phone *</label>
-              <input type="tel" name="phone" required placeholder="+234 800 000 0000">
-            </div>
-            <div class="form-group">
-              <label>BVN *</label>
-              <input type="text" name="bvn" required placeholder="12345678901" maxlength="11">
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Password *</label>
-            <input type="password" name="password" required placeholder="Minimum 6 characters" minlength="6">
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Date of Birth</label>
-              <input type="date" name="date_of_birth">
-            </div>
-            <div class="form-group">
-              <label>Occupation</label>
-              <input type="text" name="occupation" placeholder="Trader, Farmer, etc.">
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Address</label>
-            <input type="text" name="address" placeholder="Your residential address">
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Next of Kin</label>
-              <input type="text" name="next_of_kin" placeholder="Next of kin name">
-            </div>
-            <div class="form-group">
-              <label>Next of Kin Phone</label>
-              <input type="tel" name="next_of_kin_phone" placeholder="+234 800 000 0000">
-            </div>
-          </div>
-          <button type="submit" class="btn btn-primary" style="width:100%;">
-            <i class="fas fa-check"></i> Register
-          </button>
-        </form>
-        <div class="auth-switch">
-          Already have an account? <a href="#" onclick="showPage('loginPage');return false;">Login here</a>
+<!-- REGISTER -->
+<div id="registerPage" class="page">
+  <div style="max-width:620px;margin:32px auto;">
+    <div class="card">
+      <h2 style="color:var(--primary);margin-bottom:4px;"><i class="fas fa-user-plus"></i> Member Registration</h2>
+      <p style="color:var(--text-light);margin-bottom:20px;">Registration fee: N5,000 (non-refundable, Clause 2.3). BVN is used for credit check.</p>
+      <div id="registerAlert"></div>
+      <form id="registerForm">
+        <div class="form-row">
+          <div class="form-group"><label>Full Name *</label><input type="text" name="full_name" required placeholder="John Doe"></div>
+          <div class="form-group"><label>Email *</label><input type="email" name="email" required placeholder="john@email.com"></div>
         </div>
+        <div class="form-row">
+          <div class="form-group"><label>Phone (WhatsApp) *</label><input type="tel" name="phone" required placeholder="+234 800 000 0000"></div>
+          <div class="form-group"><label>BVN / NIN *</label><input type="text" name="bvn" required placeholder="12345678901" maxlength="11"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Password *</label><input type="password" name="password" required placeholder="Min 6 characters" minlength="6"></div>
+          <div class="form-group"><label>Date of Birth</label><input type="date" name="date_of_birth"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Occupation</label><input type="text" name="occupation" placeholder="Trader, Farmer..."></div>
+          <div class="form-group"><label>Monthly Income Range</label><input type="text" name="monthly_income_range" placeholder="e.g. N50,000-N100,000"></div>
+        </div>
+        <div class="form-group"><label>Home Address</label><input type="text" name="address" placeholder="Your residential address"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Next of Kin Name *</label><input type="text" name="next_of_kin" required placeholder="Jane Doe"></div>
+          <div class="form-group"><label>Next of Kin Phone *</label><input type="tel" name="next_of_kin_phone" required placeholder="+234 800 000 0000"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Relationship to Next of Kin</label><input type="text" name="next_of_kin_relationship" placeholder="Spouse, Sibling..."></div>
+          <div class="form-group"><label>Bank Name</label><input type="text" name="bank_name" placeholder="First Bank, GTB..."></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Bank Account Number</label><input type="text" name="bank_account_number" placeholder="0123456789"></div>
+          <div class="form-group"><label>Weekly Savings Tier (N)</label><input type="number" name="weekly_savings_tier" placeholder="1000 minimum" min="1000" max="20000"></div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;margin-top:8px;"><i class="fas fa-check"></i> Submit Registration</button>
+      </form>
+      <div style="text-align:center;margin-top:16px;font-size:0.9rem;color:var(--text-light);">
+        Already have an account? <a href="#" onclick="showPage('loginPage');return false;" style="color:var(--primary);font-weight:600;">Login here</a>
       </div>
     </div>
   </div>
+</div>
 
-  <!-- ===== Login Page ===== -->
-  <div id="loginPage" class="page">
-    <div class="auth-container">
-      <div class="auth-card">
-        <h2><i class="fas fa-sign-in-alt"></i> Login</h2>
-        <p class="subtitle">Sign in to your cooperative account</p>
-        <div id="loginAlert"></div>
-        <form id="loginForm">
-          <div class="form-group">
-            <label>Email</label>
-            <input type="email" name="email" required placeholder="your@email.com">
-          </div>
-          <div class="form-group">
-            <label>Password</label>
-            <input type="password" name="password" required placeholder="Your password">
-          </div>
-          <button type="submit" class="btn btn-primary" style="width:100%;">
-            <i class="fas fa-sign-in-alt"></i> Login
-          </button>
-        </form>
-        <div class="auth-switch">
-          Don't have an account? <a href="#" onclick="showPage('registerPage');return false;">Register here</a>
-        </div>
-        <div style="text-align:center;margin-top:12px;font-size:0.8rem;color:var(--text-light);">
-          Admin login: admin@cooperative.ng / admin123
+<!-- LOGIN -->
+<div id="loginPage" class="page">
+  <div style="max-width:440px;margin:60px auto;">
+    <div class="card">
+      <h2 style="color:var(--primary);margin-bottom:4px;"><i class="fas fa-sign-in-alt"></i> Login</h2>
+      <p style="color:var(--text-light);margin-bottom:20px;">Sign in to your cooperative account</p>
+      <div id="loginAlert"></div>
+      <form id="loginForm">
+        <div class="form-group"><label>Email</label><input type="email" name="email" required placeholder="your@email.com"></div>
+        <div class="form-group"><label>Password</label><input type="password" name="password" required placeholder="Your password"></div>
+        <button type="submit" class="btn btn-primary" style="width:100%;"><i class="fas fa-sign-in-alt"></i> Login</button>
+      </form>
+      <div style="text-align:center;margin-top:16px;font-size:0.9rem;color:var(--text-light);">
+        Don't have an account? <a href="#" onclick="showPage('registerPage');return false;" style="color:var(--primary);font-weight:600;">Register here</a>
+      </div>
+      <div style="text-align:center;margin-top:8px;font-size:0.78rem;color:var(--text-light);">Admin: admin@cooperative.ng / admin123</div>
+    </div>
+  </div>
+</div>
+
+<!-- REGISTRATION FEE -->
+<div id="regFeePage" class="page">
+  <div style="max-width:440px;margin:60px auto;">
+    <div class="card">
+      <h2 style="color:var(--primary);margin-bottom:8px;"><i class="fas fa-credit-card"></i> Registration Fee</h2>
+      <div class="alert alert-info">Your application is approved! Pay the <strong>N5,000 registration fee</strong> to activate your account (Clause 2.3 — non-refundable).</div>
+      <div style="text-align:center;padding:16px;background:#f5f5f5;border-radius:8px;margin:16px 0;">
+        <p style="color:var(--text-light);font-size:0.85rem;">Amount Due</p>
+        <p style="font-size:2rem;font-weight:700;color:var(--primary);">N5,000</p>
+        <p style="font-size:0.82rem;color:var(--text-light);">Bank: First Bank | Acct Name: Cooperative Society | Acct No: 1234567890</p>
+      </div>
+      <button class="btn btn-primary" style="width:100%;" onclick="payRegistrationFee()"><i class="fas fa-check-circle"></i> I Have Made Payment</button>
+    </div>
+  </div>
+</div>
+
+<!-- MEMBER DASHBOARD -->
+<div id="memberDashboard" class="page">
+  <div class="dashboard-header">
+    <div><h1><i class="fas fa-tachometer-alt"></i> Member Dashboard</h1><p class="welcome-text" id="memberWelcome"></p></div>
+  </div>
+  <div class="stats-grid" id="memberStats"></div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchMemberTab('savings',this)"><i class="fas fa-piggy-bank"></i> Savings</button>
+    <button class="tab" onclick="switchMemberTab('loans',this)"><i class="fas fa-hand-holding-usd"></i> Loans</button>
+    <button class="tab" onclick="switchMemberTab('meetings',this)"><i class="fas fa-calendar-check"></i> Check-in</button>
+    <button class="tab" onclick="switchMemberTab('profile',this)"><i class="fas fa-user"></i> Profile</button>
+  </div>
+
+  <!-- Savings Tab -->
+  <div id="memberTab-savings" class="tab-content active">
+    <div class="card">
+      <div class="card-header"><h2>Submit a Payment</h2></div>
+      <div class="alert alert-info" style="margin-bottom:12px;"><i class="fas fa-info-circle"></i> <strong>Compulsory (Weekly)</strong>: min N1,000, max N20,000/week (Clause 3.1-3.2). <strong>Voluntary</strong>: any amount, anytime (Clause 3.3). Both count toward your loan limit. Payments are visible to admin for approval.</div>
+      <form id="savingsForm" style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:16px;align-items:end;">
+        <div class="form-group" style="margin-bottom:0;"><label>Savings Type</label>
+          <select name="type"><option value="weekly">Compulsory (Weekly)</option><option value="special">Voluntary (Special)</option></select></div>
+        <div class="form-group" style="margin-bottom:0;"><label>Amount (Naira)</label><input type="number" name="amount" required placeholder="e.g. 2000" min="100"></div>
+        <div class="form-group" style="margin-bottom:0;"><label>Note (optional)</label><input type="text" name="note" placeholder="Week 1 savings"></div>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Submit</button>
+      </form>
+      <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">
+        <button class="btn btn-outline btn-sm" onclick="showPauseForm()" style="margin-right:8px;"><i class="fas fa-pause"></i> Request Savings Pause</button>
+        <span style="font-size:0.82rem;color:var(--text-light);">Clause 10.2: up to 4 weeks, N500 fee, max twice/year</span>
+        <div id="pauseFormContainer" style="display:none;margin-top:12px;">
+          <form id="pauseForm" style="display:flex;gap:16px;align-items:end;">
+            <div class="form-group" style="margin-bottom:0;"><label>How many weeks? (1-4)</label><input type="number" name="weeks" min="1" max="4" value="1" style="width:100px;"></div>
+            <button type="submit" class="btn btn-accent btn-sm">Request Pause (N500 fee)</button>
+            <button type="button" class="btn btn-sm" onclick="document.getElementById('pauseFormContainer').style.display='none'">Cancel</button>
+          </form>
         </div>
       </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><h2>Savings History</h2></div>
+      <div class="table-container">
+        <table><thead><tr><th>Date</th><th>Type</th><th>Week</th><th>Amount</th><th>Status</th><th>Comment</th></tr></thead>
+        <tbody id="savingsTableBody"></tbody></table>
+      </div>
+    </div>
+    <div class="card" id="finesCard" style="display:none;">
+      <div class="card-header"><h2><i class="fas fa-exclamation-triangle" style="color:var(--danger);"></i> Outstanding Fines</h2></div>
+      <div id="finesContent"></div>
     </div>
   </div>
 
-  <!-- ===== Registration Fee Page ===== -->
-  <div id="regFeePage" class="page">
-    <div class="auth-container">
-      <div class="auth-card">
-        <h2><i class="fas fa-credit-card"></i> Registration Fee</h2>
-        <p class="subtitle">Complete your registration by paying the N5,000 fee</p>
-        <div id="feeAlert" class="alert alert-info">
-          Your registration has been approved! Please pay the registration fee of <strong>N5,000</strong> to activate your account.
+  <!-- Loans Tab -->
+  <div id="memberTab-loans" class="tab-content">
+    <div class="card">
+      <div class="card-header"><h2>Apply for a Loan</h2></div>
+      <div id="loanEligibilityInfo"></div>
+      <form id="loanForm">
+        <div class="form-row">
+          <div class="form-group"><label>Amount Requested (N)</label><input type="number" name="amount_requested" required placeholder="e.g. 50000" min="1000"></div>
+          <div class="form-group"><label>Repayment Period</label>
+            <select name="repayment_months"><option value="3">3 months</option><option value="4">4 months</option><option value="5">5 months</option><option value="6">6 months</option></select></div>
         </div>
-        <div style="text-align:center;padding:20px;background:#f5f5f5;border-radius:8px;margin-bottom:16px;">
-          <p style="font-size:0.85rem;color:var(--text-light);margin-bottom:8px;">Amount Due</p>
-          <p style="font-size:2rem;font-weight:700;color:var(--primary);">N5,000</p>
+        <div class="form-group"><label>Purpose</label><input type="text" name="purpose" placeholder="Business expansion, medical bill, school fees..."></div>
+        <div class="form-row">
+          <div class="form-group"><label>Guarantor 1 * <span style="font-size:0.8rem;color:var(--text-light);">(must have 12+ weeks savings, no active loan)</span></label>
+            <select name="guarantor1_id" id="guarantor1Select"><option value="">— Select Guarantor 1 —</option></select></div>
+          <div class="form-group"><label>Guarantor 2 *</label>
+            <select name="guarantor2_id" id="guarantor2Select"><option value="">— Select Guarantor 2 —</option></select></div>
         </div>
-        <div style="text-align:center;margin-bottom:16px;font-size:0.85rem;color:var(--text-light);">
-          <p><i class="fas fa-info-circle"></i> Make payment to:</p>
-          <p><strong>Bank:</strong> First Bank Nigeria</p>
-          <p><strong>Account Name:</strong> Cooperative Society</p>
-          <p><strong>Account Number:</strong> 1234567890</p>
+        <div class="alert alert-warning" style="margin-bottom:12px;font-size:0.88rem;">
+          <i class="fas fa-info-circle"></i> <strong>Clause 5.4:</strong> A 1% processing fee is deducted at disbursement.
+          <strong>Clause 5.5:</strong> Compulsory savings must continue during loan repayment.
+          <strong>Clause 6:</strong> Your savings equal to the loan balance will be frozen until fully repaid.
         </div>
-        <button class="btn btn-primary" style="width:100%;" onclick="payRegistrationFee()">
-          <i class="fas fa-check-circle"></i> I Have Made Payment
-        </button>
-      </div>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Submit Application</button>
+      </form>
+    </div>
+    <div class="card">
+      <div class="card-header"><h2>Loan History & Repayments</h2></div>
+      <div id="loanHistoryContent"></div>
     </div>
   </div>
 
-  <!-- ===== Member Dashboard ===== -->
-  <div id="memberDashboard" class="page">
-    <div class="dashboard-header">
-      <div>
-        <h1><i class="fas fa-tachometer-alt"></i> Member Dashboard</h1>
-        <p class="welcome-text" id="memberWelcome"></p>
-      </div>
-    </div>
-
-    <!-- Stats -->
-    <div class="stats-grid" id="memberStats"></div>
-
-    <!-- Tabs -->
-    <div class="tabs">
-      <button class="tab active" onclick="switchMemberTab('savings', this)"><i class="fas fa-piggy-bank"></i> My Savings</button>
-      <button class="tab" onclick="switchMemberTab('loans', this)"><i class="fas fa-hand-holding-usd"></i> My Loans</button>
-      <button class="tab" onclick="switchMemberTab('meetings', this)"><i class="fas fa-calendar-check"></i> Sunday Check-in</button>
-      <button class="tab" onclick="switchMemberTab('profile', this)"><i class="fas fa-user"></i> Profile</button>
-    </div>
-
-    <!-- Savings Tab -->
-    <div id="memberTab-savings" class="tab-content active">
-      <div class="card">
-        <div class="card-header">
-          <h2>Submit a Payment</h2>
-        </div>
-        <div class="alert alert-info" style="margin-bottom:12px;">
-          <i class="fas fa-info-circle"></i> Submit your payment details below. An admin will review and approve it before it reflects on your savings.
-        </div>
-        <form id="savingsForm" style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:16px;align-items:end;">
-          <div class="form-group" style="margin-bottom:0;">
-            <label>Savings Type</label>
-            <select name="type">
-              <option value="weekly">Weekly Savings</option>
-              <option value="special">Special Savings</option>
-            </select>
-          </div>
-          <div class="form-group" style="margin-bottom:0;">
-            <label>Amount (Naira)</label>
-            <input type="number" name="amount" required placeholder="e.g. 1000" min="100">
-          </div>
-          <div class="form-group" style="margin-bottom:0;">
-            <label>Note (optional)</label>
-            <input type="text" name="note" placeholder="Week 1 contribution">
-          </div>
-          <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Add</button>
-        </form>
-      </div>
-      <div class="card">
-        <div class="card-header">
-          <h2>Savings History</h2>
-        </div>
-        <div class="table-container">
-          <table id="savingsTable">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Type</th>
-                <th>Week</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Note / Comment</th>
-              </tr>
-            </thead>
-            <tbody id="savingsTableBody"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- Loans Tab -->
-    <div id="memberTab-loans" class="tab-content">
-      <div class="card">
-        <div class="card-header">
-          <h2>Apply for Loan</h2>
-        </div>
-        <div id="loanEligibilityInfo"></div>
-        <form id="loanForm">
-          <div class="form-row">
-            <div class="form-group">
-              <label>Amount Requested (Naira)</label>
-              <input type="number" name="amount_requested" required placeholder="e.g. 50000" min="1000">
-            </div>
-            <div class="form-group">
-              <label>Purpose</label>
-              <input type="text" name="purpose" placeholder="Business expansion, medical, etc.">
-            </div>
-          </div>
-          <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Submit Application</button>
-        </form>
-      </div>
-      <div class="card">
-        <div class="card-header">
-          <h2>Loan History</h2>
-        </div>
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Amount</th>
-                <th>Purpose</th>
-                <th>Status</th>
-                <th>Admin Comment</th>
-              </tr>
-            </thead>
-            <tbody id="loanTableBody"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- Meetings Tab -->
-    <div id="memberTab-meetings" class="tab-content">
-      <div id="meetingCheckinContainer"></div>
-      <div class="card">
-        <div class="card-header">
-          <h2>Meeting Attendance History</h2>
-        </div>
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Meeting Date</th>
-                <th>Code</th>
-                <th>Payment</th>
-                <th>Checked In</th>
-              </tr>
-            </thead>
-            <tbody id="meetingHistoryBody"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- Profile Tab -->
-    <div id="memberTab-profile" class="tab-content">
-      <div class="card">
-        <div class="card-header">
-          <h2>My Profile</h2>
-        </div>
-        <div id="profileInfo"></div>
-        <form id="profileForm" class="mt-2">
-          <div class="form-row">
-            <div class="form-group">
-              <label>Address</label>
-              <input type="text" name="address">
-            </div>
-            <div class="form-group">
-              <label>Date of Birth</label>
-              <input type="date" name="date_of_birth">
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Occupation</label>
-              <input type="text" name="occupation">
-            </div>
-            <div class="form-group">
-              <label>Next of Kin</label>
-              <input type="text" name="next_of_kin">
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Next of Kin Phone</label>
-            <input type="tel" name="next_of_kin_phone">
-          </div>
-          <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update Profile</button>
-        </form>
+  <!-- Meeting Check-in Tab -->
+  <div id="memberTab-meetings" class="tab-content">
+    <div id="meetingCheckinContainer"></div>
+    <div class="card">
+      <div class="card-header"><h2>Attendance History</h2></div>
+      <div class="table-container">
+        <table><thead><tr><th>Date</th><th>Code</th><th>Payment</th><th>Time</th></tr></thead>
+        <tbody id="meetingHistoryBody"></tbody></table>
       </div>
     </div>
   </div>
 
-  <!-- ===== Admin Dashboard ===== -->
-  <div id="adminDashboard" class="page">
-    <div class="dashboard-header">
-      <div>
-        <h1><i class="fas fa-user-shield"></i> Admin Dashboard</h1>
-        <p class="welcome-text">Manage members, loans, and meetings</p>
-      </div>
+  <!-- Profile Tab -->
+  <div id="memberTab-profile" class="tab-content">
+    <div class="card">
+      <div class="card-header"><h2>My Profile</h2></div>
+      <div id="profileInfo"></div>
+      <form id="profileForm" class="mt-2">
+        <div class="form-row">
+          <div class="form-group"><label>Address</label><input type="text" name="address"></div>
+          <div class="form-group"><label>Date of Birth</label><input type="date" name="date_of_birth"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Occupation</label><input type="text" name="occupation"></div>
+          <div class="form-group"><label>Monthly Income Range</label><input type="text" name="monthly_income_range"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Next of Kin</label><input type="text" name="next_of_kin"></div>
+          <div class="form-group"><label>Next of Kin Phone</label><input type="tel" name="next_of_kin_phone"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Relationship</label><input type="text" name="next_of_kin_relationship"></div>
+          <div class="form-group"><label>Weekly Savings Tier (N)</label><input type="number" name="weekly_savings_tier" min="1000" max="20000"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Bank Name</label><input type="text" name="bank_name"></div>
+          <div class="form-group"><label>Bank Account Number</label><input type="text" name="bank_account_number"></div>
+        </div>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update Profile</button>
+      </form>
     </div>
+  </div>
+</div>
 
-    <!-- Stats -->
-    <div class="stats-grid" id="adminStats"></div>
+<!-- ADMIN DASHBOARD -->
+<div id="adminDashboard" class="page">
+  <div class="dashboard-header">
+    <div><h1><i class="fas fa-user-shield"></i> Admin Dashboard</h1><p class="welcome-text">Manage savings, loans, repayments and meetings</p></div>
+  </div>
+  <div class="stats-grid" id="adminStats"></div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchAdminTab('savings',this)"><i class="fas fa-piggy-bank"></i> Pending Savings</button>
+    <button class="tab" onclick="switchAdminTab('repayments',this)"><i class="fas fa-undo"></i> Repayments</button>
+    <button class="tab" onclick="switchAdminTab('loans',this)"><i class="fas fa-hand-holding-usd"></i> Loans</button>
+    <button class="tab" onclick="switchAdminTab('members',this)"><i class="fas fa-users"></i> Members</button>
+    <button class="tab" onclick="switchAdminTab('meetings',this)"><i class="fas fa-calendar-check"></i> Meetings</button>
+    <button class="tab" onclick="switchAdminTab('suggestions',this)"><i class="fas fa-lightbulb"></i> Suggestions</button>
+  </div>
 
-    <!-- Tabs -->
-    <div class="tabs">
-      <button class="tab active" onclick="switchAdminTab('savings', this)"><i class="fas fa-piggy-bank"></i> Pending Savings</button>
-      <button class="tab" onclick="switchAdminTab('loans', this)"><i class="fas fa-hand-holding-usd"></i> Loan Requests</button>
-      <button class="tab" onclick="switchAdminTab('members', this)"><i class="fas fa-users"></i> Members</button>
-      <button class="tab" onclick="switchAdminTab('meetings', this)"><i class="fas fa-calendar-check"></i> Meetings</button>
-      <button class="tab" onclick="switchAdminTab('suggestions', this)"><i class="fas fa-lightbulb"></i> Loan Suggestions</button>
-    </div>
-
-    <!-- Pending Savings Tab (default active) -->
-    <div id="adminTab-savings" class="tab-content active">
-      <div class="card">
-        <div class="card-header">
-          <h2><i class="fas fa-clock"></i> Pending Payment Approvals</h2>
-          <button class="btn btn-accent btn-sm" onclick="loadAdminDashboard()"><i class="fas fa-sync"></i> Refresh</button>
-        </div>
-        <div class="alert alert-info" style="margin-bottom:16px;">
-          Members submit their payment details here. Review and approve or reject each entry before it counts toward their savings and loan eligibility.
-        </div>
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Member</th>
-                <th>Type</th>
-                <th>Week</th>
-                <th>Amount</th>
-                <th>Note</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody id="adminPendingSavingsBody"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- Loans Tab -->
-    <div id="adminTab-loans" class="tab-content">
-      <div class="card">
-        <div class="card-header">
-          <h2>Loan Requests</h2>
-          <div class="flex gap-1">
-            <select id="loanFilter" onchange="loadAdminLoans()" class="btn-sm" style="padding:6px 12px;border:1px solid var(--border);border-radius:6px;">
-              <option value="">All Statuses</option>
-              <option value="pending">Pending</option>
-              <option value="approved">Approved</option>
-              <option value="in_progress">In Progress</option>
-              <option value="rejected">Rejected</option>
-            </select>
-          </div>
-        </div>
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Member</th>
-                <th>Phone</th>
-                <th>Amount</th>
-                <th>Weekly Savings</th>
-                <th>Weeks</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="adminLoanTableBody"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- Members Tab -->
-    <div id="adminTab-members" class="tab-content">
-      <div class="card">
-        <div class="card-header">
-          <h2>All Members</h2>
-        </div>
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Phone</th>
-                <th>Email</th>
-                <th>Credit Score</th>
-                <th>Weekly Savings</th>
-                <th>Weeks</th>
-                <th>Meetings</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="adminMembersTableBody"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- Meetings Tab -->
-    <div id="adminTab-meetings" class="tab-content">
-      <div class="card">
-        <div class="card-header">
-          <h2>Create Sunday Meeting</h2>
-        </div>
-        <form id="meetingForm" style="display:flex;gap:16px;align-items:end;">
-          <div class="form-group" style="margin-bottom:0;flex:1;">
-            <label>Meeting Date</label>
-            <input type="date" name="meeting_date" required>
-          </div>
-          <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Create Meeting</button>
-        </form>
-      </div>
-      <div class="card">
-        <div class="card-header">
-          <h2>Meeting History</h2>
-        </div>
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Code</th>
-                <th>Active</th>
-                <th>Attendance</th>
-                <th>Payments</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="adminMeetingsTableBody"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- Suggestions Tab -->
-    <div id="adminTab-suggestions" class="tab-content">
-      <div class="card">
-        <div class="card-header">
-          <h2>AI Loan Suggestions</h2>
-          <button class="btn btn-accent btn-sm" onclick="loadAllSuggestions()">
-            <i class="fas fa-sync"></i> Refresh
-          </button>
-        </div>
-        <div id="suggestionsSummary"></div>
-        <div id="suggestionsList"></div>
+  <!-- Pending Savings -->
+  <div id="adminTab-savings" class="tab-content active">
+    <div class="card">
+      <div class="card-header"><h2><i class="fas fa-clock"></i> Pending Payment Approvals</h2><button class="btn btn-accent btn-sm" onclick="loadAdminDashboard()"><i class="fas fa-sync"></i> Refresh</button></div>
+      <div class="alert alert-info" style="margin-bottom:12px;">Review and approve/reject member payments before they count toward savings totals and loan eligibility.</div>
+      <div class="table-container">
+        <table><thead><tr><th>Date</th><th>Member</th><th>Type</th><th>Week</th><th>Amount</th><th>Note</th><th>Action</th></tr></thead>
+        <tbody id="adminPendingSavingsBody"></tbody></table>
       </div>
     </div>
   </div>
 
-  <!-- ===== Loan Detail Modal ===== -->
-  <div id="loanModal" class="modal-overlay">
-    <div class="modal" style="max-width:700px;">
-      <div class="modal-header">
-        <h2 id="loanModalTitle">Loan Details</h2>
-        <button class="modal-close" onclick="closeModal('loanModal')">&times;</button>
+  <!-- Repayments -->
+  <div id="adminTab-repayments" class="tab-content">
+    <div class="card">
+      <div class="card-header"><h2><i class="fas fa-undo"></i> Pending Loan Repayments</h2></div>
+      <div class="table-container">
+        <table><thead><tr><th>Date</th><th>Member</th><th>Loan Amount</th><th>Already Repaid</th><th>This Payment</th><th>Note</th><th>Action</th></tr></thead>
+        <tbody id="adminRepaymentsBody"></tbody></table>
       </div>
-      <div class="modal-body" id="loanModalBody"></div>
     </div>
   </div>
 
-  <!-- ===== Member Detail Modal ===== -->
-  <div id="memberModal" class="modal-overlay">
-    <div class="modal" style="max-width:800px;">
-      <div class="modal-header">
-        <h2 id="memberModalTitle">Member Details</h2>
-        <button class="modal-close" onclick="closeModal('memberModal')">&times;</button>
+  <!-- Loans -->
+  <div id="adminTab-loans" class="tab-content">
+    <div class="card">
+      <div class="card-header"><h2>Loan Requests</h2>
+        <select id="loanFilter" onchange="loadAdminLoans()" style="padding:6px 12px;border:1px solid var(--border);border-radius:6px;">
+          <option value="">All</option><option value="pending">Pending</option><option value="approved">Approved</option>
+          <option value="in_progress">In Progress</option><option value="rejected">Rejected</option><option value="completed">Completed</option>
+        </select>
       </div>
-      <div class="modal-body" id="memberModalBody"></div>
+      <div class="table-container">
+        <table><thead><tr><th>Date</th><th>Member</th><th>Amount</th><th>Total Savings</th><th>Weeks</th><th>Guarantors</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody id="adminLoanTableBody"></tbody></table>
+      </div>
     </div>
   </div>
 
-  <!-- ===== Meeting Attendance Modal ===== -->
-  <div id="attendanceModal" class="modal-overlay">
-    <div class="modal" style="max-width:600px;">
-      <div class="modal-header">
-        <h2 id="attendanceModalTitle">Meeting Attendance</h2>
-        <button class="modal-close" onclick="closeModal('attendanceModal')">&times;</button>
+  <!-- Members -->
+  <div id="adminTab-members" class="tab-content">
+    <div class="card">
+      <div class="card-header"><h2>All Members</h2></div>
+      <div class="table-container">
+        <table><thead><tr><th>Name</th><th>Phone</th><th>Credit Score</th><th>Weekly Savings</th><th>Voluntary</th><th>Weeks</th><th>Fines</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody id="adminMembersTableBody"></tbody></table>
       </div>
-      <div class="modal-body" id="attendanceModalBody"></div>
     </div>
   </div>
 
-  <!-- ===== Scripts ===== -->
-  <script src="js/app.js"></script>
+  <!-- Meetings -->
+  <div id="adminTab-meetings" class="tab-content">
+    <div class="card">
+      <div class="card-header"><h2>Create Sunday Meeting</h2></div>
+      <form id="meetingForm" style="display:flex;gap:16px;align-items:end;">
+        <div class="form-group" style="margin-bottom:0;flex:1;"><label>Meeting Date</label><input type="date" name="meeting_date" required></div>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Create Meeting</button>
+      </form>
+    </div>
+    <div class="card">
+      <div class="card-header"><h2>Meeting History</h2></div>
+      <div class="table-container">
+        <table><thead><tr><th>Date</th><th>Code</th><th>Active</th><th>Attendance</th><th>Payments</th><th>Action</th></tr></thead>
+        <tbody id="adminMeetingsTableBody"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Suggestions -->
+  <div id="adminTab-suggestions" class="tab-content">
+    <div class="card">
+      <div class="card-header"><h2><i class="fas fa-lightbulb"></i> AI Loan Suggestions</h2><button class="btn btn-accent btn-sm" onclick="loadAllSuggestions()"><i class="fas fa-sync"></i> Refresh</button></div>
+      <div id="suggestionsSummary"></div>
+      <div id="suggestionsList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div id="loanModal" class="modal-overlay"><div class="modal" style="max-width:720px;">
+  <div class="modal-header"><h2 id="loanModalTitle">Loan Details</h2><button class="modal-close" onclick="closeModal('loanModal')">&times;</button></div>
+  <div class="modal-body" id="loanModalBody"></div>
+</div></div>
+
+<div id="memberModal" class="modal-overlay"><div class="modal" style="max-width:820px;">
+  <div class="modal-header"><h2 id="memberModalTitle">Member Details</h2><button class="modal-close" onclick="closeModal('memberModal')">&times;</button></div>
+  <div class="modal-body" id="memberModalBody"></div>
+</div></div>
+
+<div id="attendanceModal" class="modal-overlay"><div class="modal" style="max-width:600px;">
+  <div class="modal-header"><h2 id="attendanceModalTitle">Attendance</h2><button class="modal-close" onclick="closeModal('attendanceModal')">&times;</button></div>
+  <div class="modal-body" id="attendanceModalBody"></div>
+</div></div>
+
+<div id="repaymentModal" class="modal-overlay"><div class="modal" style="max-width:500px;">
+  <div class="modal-header"><h2>Submit Loan Repayment</h2><button class="modal-close" onclick="closeModal('repaymentModal')">&times;</button></div>
+  <div class="modal-body">
+    <input type="hidden" id="repaymentLoanId">
+    <div class="form-group"><label>Amount (N)</label><input type="number" id="repaymentAmount" min="100" placeholder="Enter amount"></div>
+    <div class="form-group"><label>Note</label><input type="text" id="repaymentNote" placeholder="e.g. Month 1 repayment"></div>
+    <div id="repaymentInfo" style="margin-bottom:12px;font-size:0.88rem;color:var(--text-light);"></div>
+    <button class="btn btn-primary" onclick="submitRepayment()"><i class="fas fa-paper-plane"></i> Submit Repayment</button>
+  </div>
+</div></div>
+
+<script src="js/app.js"></script>
 </body>
 </html>

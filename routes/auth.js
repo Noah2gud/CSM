@@ -25,75 +25,56 @@ function checkCreditScore(bvn, phone) {
 // POST /api/auth/register
 router.post('/register', (req, res) => {
   const {
-    full_name, email, phone, password, address,
-    date_of_birth, occupation, next_of_kin, next_of_kin_phone, bvn
+    full_name, email, phone, password, address, date_of_birth,
+    occupation, monthly_income_range, next_of_kin, next_of_kin_phone,
+    next_of_kin_relationship, bank_name, bank_account_number,
+    bvn, weekly_savings_tier
   } = req.body;
 
-  // Validate required fields
   if (!full_name || !email || !phone || !password || !bvn) {
     return res.status(400).json({ error: 'Full name, email, phone, password, and BVN are required' });
   }
 
-  // Check if email already exists
   const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
   if (existing) {
     return res.status(400).json({ error: 'Email already registered' });
   }
 
-  // Check credit score
   const creditScore = checkCreditScore(bvn, phone);
-  const creditChecked = 1;
-
-  // Determine eligibility based on credit score
-  // Score >= 550 is eligible to join
   const MINIMUM_CREDIT_SCORE = 550;
   const isEligible = creditScore >= MINIMUM_CREDIT_SCORE;
-
   const hashedPassword = bcrypt.hashSync(password, 10);
   const id = uuid();
-
-  // If not eligible, still create account but mark as rejected
   const status = isEligible ? 'pending' : 'rejected';
+  const tier = weekly_savings_tier && weekly_savings_tier >= 1000 ? weekly_savings_tier : 1000;
 
   db.prepare(`
     INSERT INTO users (
       id, full_name, email, phone, password, address, date_of_birth,
-      occupation, next_of_kin, next_of_kin_phone, bvn,
-      credit_score, credit_checked, status, role
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'member')
-  `).run(
-    id, full_name, email, phone, hashedPassword, address || null,
-    date_of_birth || null, occupation || null, next_of_kin || null,
-    next_of_kin_phone || null, bvn, creditScore, creditChecked, status
-  );
+      occupation, monthly_income_range, next_of_kin, next_of_kin_phone,
+      next_of_kin_relationship, bank_name, bank_account_number, bvn,
+      credit_score, credit_checked, status, role, weekly_savings_tier
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,'member',?)
+  `).run(id, full_name, email, phone, hashedPassword, address || null,
+         date_of_birth || null, occupation || null, monthly_income_range || null,
+         next_of_kin || null, next_of_kin_phone || null, next_of_kin_relationship || null,
+         bank_name || null, bank_account_number || null, bvn, creditScore, status, tier);
 
   if (!isEligible) {
     return res.status(403).json({
       error: 'Registration declined',
-      message: `Your credit score is ${creditScore}, which is below the minimum requirement of ${MINIMUM_CREDIT_SCORE}. You are not eligible to join the cooperative at this time.`,
-      credit_score: creditScore,
-      eligible: false
+      message: `Your credit score is ${creditScore}, which is below the minimum of 550. You are not eligible to join at this time.`,
+      credit_score: creditScore, eligible: false
     });
   }
 
-  // Generate token
-  const token = jwt.sign(
-    { id, email, role: 'member' },
-    JWT_SECRET,
-    { expiresIn: '7d' }
-  );
+  const token = jwt.sign({ id, email, role: 'member' }, JWT_SECRET, { expiresIn: '7d' });
 
   res.status(201).json({
-    message: 'Registration successful! Please pay the N5,000 registration fee to complete your membership.',
+    message: 'Registration successful! Please pay the N5,000 registration fee to complete your membership (Clause 2.3).',
     token,
-    user: {
-      id, full_name, email, phone, role: 'member',
-      credit_score: creditScore, status,
-      registration_fee_paid: 0
-    },
-    credit_score: creditScore,
-    eligible: true,
-    registration_fee: 5000
+    user: { id, full_name, email, phone, role: 'member', credit_score: creditScore, status, registration_fee_paid: 0 },
+    credit_score: creditScore, eligible: true, registration_fee: 5000
   });
 });
 
