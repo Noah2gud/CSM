@@ -3,14 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cooperative Thrift & Credit Society</title>
+  <title>Nofem Group Foundation — Cooperative Thrift & Credit Society</title>
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body>
 
 <nav class="navbar">
-  <div class="navbar-brand"><i class="fas fa-hand-holding-usd"></i> Cooperative Society</div>
+  <div class="navbar-brand">
+    <img src="images/logo.png" alt="Nofem Logo" onerror="this.style.display='none'">
+    <div class="brand-text">
+      <span class="brand-name">NOFEM GROUP</span>
+      <span class="brand-sub">Foundation</span>
+    </div>
+  </div>
   <div class="navbar-links" id="navLinks"></div>
 </nav>
 
@@ -20,24 +26,128 @@
 
 <!-- LANDING -->
 <div id="landingPage" class="page active">
+
+  <!-- Hero -->
   <div class="hero">
-    <h1>Welcome to Our Cooperative Thrift & Credit Society</h1>
-    <p>A closed, member-owned savings and credit group. Save weekly, build your pool, and access interest-free loans after 12 weeks.</p>
+    <img src="images/logo.png" alt="Nofem Group Foundation" class="hero-logo" onerror="this.style.display='none'">
+    <div class="hero-tagline">Empowering People &bull; Building Communities &bull; Creating a Better Tomorrow</div>
+    <h1>Nofem Group Foundation</h1>
+    <p>A member-owned cooperative where people save together, invest together, and grow together. Join us to build financial security and access real economic benefits.</p>
     <div class="hero-buttons">
-      <button class="btn btn-primary" onclick="showPage('registerPage')"><i class="fas fa-user-plus"></i> Register Now</button>
-      <button class="btn btn-outline" onclick="showPage('loginPage')"><i class="fas fa-sign-in-alt"></i> Login</button>
+      <button class="btn btn-accent" onclick="showPage('registerPage')"><i class="fas fa-user-plus"></i> Become a Member</button>
+      <button class="btn btn-outline" style="color:white;border-color:white;" onclick="showPage('loginPage')"><i class="fas fa-sign-in-alt"></i> Member Login</button>
     </div>
   </div>
-  <div class="features-grid">
-    <div class="feature-card"><div class="icon"><i class="fas fa-piggy-bank"></i></div><h3>Interest-Free Loans</h3><p>Access loans up to 2x your total savings. No interest — only a 1% processing fee.</p></div>
-    <div class="feature-card"><div class="icon"><i class="fas fa-shield-alt"></i></div><h3>Credit Verified</h3><p>BVN-based credit score check ensures all members are trustworthy.</p></div>
-    <div class="feature-card"><div class="icon"><i class="fas fa-users"></i></div><h3>12-Week Commitment</h3><p>Save for 12 consecutive weeks, then access loans up to 2x your savings.</p></div>
-    <div class="feature-card"><div class="icon"><i class="fas fa-lock"></i></div><h3>Your Savings are Safe</h3><p>25% pool reserve never lent out. Maximum 70% lendable at any time.</p></div>
+
+  <!-- Mission Strip -->
+  <div class="mission-strip">
+    <p>
+      <i class="fas fa-coins"></i> Members contribute savings
+      <span>|</span>
+      <i class="fas fa-chart-line"></i> Access investment opportunities
+      <span>|</span>
+      <i class="fas fa-gift"></i> Receive economic benefits
+    </p>
   </div>
+
+  <!-- Four Pillars -->
+  <div class="pillars-section">
+    <h2>Our Four Pillars</h2>
+    <p class="section-sub">Everything we do is built on these foundations</p>
+    <div class="pillars-grid">
+      <div class="pillar-card savings">
+        <div class="pillar-icon"><i class="fas fa-piggy-bank"></i></div>
+        <h3>Savings</h3>
+        <p>Build financial security through disciplined weekly and voluntary savings. Your savings pool grows with every contribution from every member.</p>
+      </div>
+      <div class="pillar-card investment">
+        <div class="pillar-icon"><i class="fas fa-chart-bar"></i></div>
+        <h3>Investment</h3>
+        <p>Members access agreed investment opportunities funded from the cooperative pool. Interest-free loans help you grow your business and income.</p>
+      </div>
+      <div class="pillar-card property">
+        <div class="pillar-icon"><i class="fas fa-home"></i></div>
+        <h3>Land & Property</h3>
+        <p>Cooperative members benefit from group access to land and property opportunities that would be difficult to reach individually.</p>
+      </div>
+      <div class="pillar-card food">
+        <div class="pillar-icon"><i class="fas fa-seedling"></i></div>
+        <h3>Food Security</h3>
+        <p>We support members in building food security through collective agricultural initiatives and shared resources within the community.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- How It Works -->
+  <div class="how-section">
+    <h2>How the Cooperative Works</h2>
+    <p class="section-sub">Simple steps from joining to benefiting</p>
+    <div class="steps-grid">
+      <div class="step-item">
+        <div class="step-number">1</div>
+        <h4>Register</h4>
+        <p>Apply for membership. Your details are verified and a credit check is run to confirm eligibility.</p>
+      </div>
+      <div class="step-item">
+        <div class="step-number">2</div>
+        <h4>Pay Registration</h4>
+        <p>Complete your one-time N5,000 registration fee to activate full membership.</p>
+      </div>
+      <div class="step-item">
+        <div class="step-number">3</div>
+        <h4>Save Weekly</h4>
+        <p>Contribute compulsory savings every week. Voluntary savings can be added at any time.</p>
+      </div>
+      <div class="step-item">
+        <div class="step-number">4</div>
+        <h4>Access Loans</h4>
+        <p>After 12 weeks, apply for an interest-free loan of up to 2× your total savings with two guarantors.</p>
+      </div>
+      <div class="step-item">
+        <div class="step-number">5</div>
+        <h4>Earn Benefits</h4>
+        <p>Share in the cooperative's annual surplus and access investment, property, and food security programmes.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Why Join -->
+  <div class="pillars-section">
+    <h2>Why Join Nofem?</h2>
+    <p class="section-sub">Real benefits for real people</p>
+    <div class="pillars-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+      <div class="feature-card">
+        <div class="icon"><i class="fas fa-hand-holding-usd"></i></div>
+        <h3>Interest-Free Loans</h3>
+        <p>Borrow from the pool at zero interest. Only a small 1% processing fee applies.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon"><i class="fas fa-shield-alt"></i></div>
+        <h3>Verified Members</h3>
+        <p>All members are BVN-verified. Your savings are protected in a trusted, closed group.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon"><i class="fas fa-users"></i></div>
+        <h3>Community Strength</h3>
+        <p>Weekly Sunday meetings keep members connected, accountable, and informed.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon"><i class="fas fa-balance-scale"></i></div>
+        <h3>Fair & Transparent</h3>
+        <p>Elected officers, independent audits, and monthly statements for all members.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer CTA -->
   <div class="contact-info">
-    <h3>Contact Us</h3>
-    <p><i class="fas fa-phone"></i> +234 803 218 0923 &nbsp;|&nbsp; <i class="fas fa-phone"></i> +234 810 875 9222</p>
+    <h3>Ready to Join?</h3>
+    <p>Become a member today and start building your financial future with Nofem Group Foundation.</p>
+    <button class="btn btn-accent" style="margin-top:16px;" onclick="showPage('registerPage')">
+      <i class="fas fa-user-plus"></i> Register Now
+    </button>
   </div>
+
 </div>
 
 <!-- REGISTER -->
@@ -101,7 +211,6 @@
       <div style="text-align:center;margin-top:16px;font-size:0.9rem;color:var(--text-light);">
         Don't have an account? <a href="#" onclick="showPage('registerPage');return false;" style="color:var(--primary);font-weight:600;">Register here</a>
       </div>
-      <div style="text-align:center;margin-top:8px;font-size:0.78rem;color:var(--text-light);">Admin: admin@cooperative.ng / admin123</div>
     </div>
   </div>
 </div>
@@ -115,7 +224,7 @@
       <div style="text-align:center;padding:16px;background:#f5f5f5;border-radius:8px;margin:16px 0;">
         <p style="color:var(--text-light);font-size:0.85rem;">Amount Due</p>
         <p style="font-size:2rem;font-weight:700;color:var(--primary);">N5,000</p>
-        <p style="font-size:0.82rem;color:var(--text-light);">Bank: First Bank | Acct Name: Cooperative Society | Acct No: 1234567890</p>
+        <p style="font-size:0.88rem;color:var(--text-light);">Please make payment to the cooperative's official account.<br>Contact admin for bank details: <strong>+234 803 218 0923</strong></p>
       </div>
       <button class="btn btn-primary" style="width:100%;" onclick="payRegistrationFee()"><i class="fas fa-check-circle"></i> I Have Made Payment</button>
     </div>
