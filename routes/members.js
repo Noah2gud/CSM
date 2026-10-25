@@ -9,22 +9,22 @@ const db = global.db;
 // COOPERATIVE RULES (from Membership Agreement)
 // ============================================================
 const RULES = {
-  WEEKLY_SAVINGS_MAX: 20000,          // Clause 3.2: max N20,000/week
-  WEEKLY_SAVINGS_MIN: 1000,           // Clause 3.1: min N1,000/week
-  REGISTRATION_FEE: 5000,             // Clause 2.3
-  LOAN_MULTIPLIER: 2,                 // Clause 5.1: 2x total savings
-  MIN_SAVINGS_WEEKS: 12,              // Clause 4.1: 12 consecutive weeks
-  PROCESSING_FEE_RATE: 0.01,          // Clause 5.4: 1% of loan
-  RESERVE_RATE: 0.25,                 // Clause 9.1: keep 25-30% as reserve
-  MAX_LEND_RATE: 0.70,                // Clause 9.2: lend max 70-75%
-  MAX_SINGLE_LOAN_PCT: 0.10,          // Clause 5.1: no loan > 10% of pool
-  SAVINGS_LATE_FINE: 200,             // Clause 3.4
-  LOAN_LATE_FINE: 500,                // Clause 8.1
-  WELFARE_LEVY: 300,                  // Clause 12.1
-  PAUSE_FEE: 500,                     // Clause 10.2
-  MAX_PAUSE_WEEKS: 4,                 // Clause 10.2
-  MAX_PAUSES_PER_YEAR: 2,             // Clause 10.2
-  LOCK_PERIOD_WEEKS: 12,              // Clause 11.1: can't leave first 12 weeks
+  WEEKLY_SAVINGS_MAX: 20000,          // max N20,000/week
+  WEEKLY_SAVINGS_MIN: 1000,           // min N1,000/week
+  REGISTRATION_FEE: 5000,             // one-time registration fee
+  LOAN_MULTIPLIER: 2,                 // 2x total savings
+  MIN_SAVINGS_WEEKS: 12,              // 12 consecutive weeks
+  PROCESSING_FEE_RATE: 0.01,          // 1% of loan
+  RESERVE_RATE: 0.25,                 // keep 25-30% as reserve
+  MAX_LEND_RATE: 0.70,                // lend max 70-75%
+  MAX_SINGLE_LOAN_PCT: 0.10,          // no loan > 10% of pool
+  SAVINGS_LATE_FINE: 200,             // late savings fine
+  LOAN_LATE_FINE: 500,                // late loan instalment fine
+  WELFARE_LEVY: 300,                  // monthly welfare levy
+  PAUSE_FEE: 500,                     // savings pause fee
+  MAX_PAUSE_WEEKS: 4,                 // max pause weeks
+  MAX_PAUSES_PER_YEAR: 2,             // max pauses per year
+  LOCK_PERIOD_WEEKS: 12,              // lock period for new members
 };
 
 router.use(authenticate);
@@ -176,21 +176,21 @@ router.post('/savings', (req, res) => {
     return res.status(400).json({ error: 'Type must be "weekly" (Compulsory) or "special" (Voluntary)' });
   }
 
-  // Clause 3.2: weekly max N20,000
+  // weekly max N20,000
   if (type === 'weekly' && amount > RULES.WEEKLY_SAVINGS_MAX) {
     return res.status(400).json({
-      error: `Weekly savings cannot exceed N${RULES.WEEKLY_SAVINGS_MAX.toLocaleString()} (Clause 3.2)`
+      error: `Weekly savings cannot exceed N${RULES.WEEKLY_SAVINGS_MAX.toLocaleString()}`
     });
   }
   if (type === 'weekly' && amount < RULES.WEEKLY_SAVINGS_MIN) {
     return res.status(400).json({
-      error: `Weekly savings minimum is N${RULES.WEEKLY_SAVINGS_MIN.toLocaleString()} (Clause 3.1)`
+      error: `Weekly savings minimum is N${RULES.WEEKLY_SAVINGS_MIN.toLocaleString()}`
     });
   }
 
   // Check if on approved pause — still can submit voluntary
   if (type === 'weekly' && isOnPause(req.user.id)) {
-    return res.status(400).json({ error: 'Your weekly savings are currently paused (Clause 10.2). You can still add Voluntary savings.' });
+    return res.status(400).json({ error: 'Your weekly savings are currently paused. You can still add Voluntary savings.' });
   }
 
   let weekNumber = null;
@@ -213,17 +213,17 @@ router.post('/savings', (req, res) => {
   });
 });
 
-// POST /api/members/savings/pause — request savings pause (Clause 10.2)
+// POST /api/members/savings/pause — request savings pause
 router.post('/savings/pause', (req, res) => {
   const { weeks } = req.body;
   if (!weeks || weeks < 1 || weeks > RULES.MAX_PAUSE_WEEKS) {
-    return res.status(400).json({ error: `Pause must be 1-${RULES.MAX_PAUSE_WEEKS} weeks (Clause 10.2)` });
+    return res.status(400).json({ error: `Pause duration must be between 1 and ${RULES.MAX_PAUSE_WEEKS} weeks` });
   }
 
   // Check active loan — can't pause if on a loan
   const activeLoan = db.prepare(`SELECT id FROM loans WHERE user_id=? AND status IN ('approved','in_progress')`).get(req.user.id);
   if (activeLoan) {
-    return res.status(400).json({ error: 'Cannot pause savings while you have an active loan (Clause 10.2)' });
+    return res.status(400).json({ error: 'Cannot pause savings while you have an active loan' });
   }
 
   // Check pauses used this year
@@ -234,7 +234,7 @@ router.post('/savings/pause', (req, res) => {
   `).get(req.user.id, year.toString());
 
   if (usedPauses.cnt >= RULES.MAX_PAUSES_PER_YEAR) {
-    return res.status(400).json({ error: `You have used all ${RULES.MAX_PAUSES_PER_YEAR} pause allowances for this year (Clause 10.2)` });
+    return res.status(400).json({ error: `You have used all ${RULES.MAX_PAUSES_PER_YEAR} pause allowances for this year` });
   }
 
   const id = uuid();
@@ -244,7 +244,7 @@ router.post('/savings/pause', (req, res) => {
   `).run(id, req.user.id, weeks, RULES.PAUSE_FEE);
 
   res.status(201).json({
-    message: `Pause request for ${weeks} week(s) submitted. Admin will review. A fee of N${RULES.PAUSE_FEE} applies (Clause 10.2).`,
+    message: `Pause request for ${weeks} week(s) submitted. Admin will review. A fee of N${RULES.PAUSE_FEE} applies.`,
     pause: { id, weeks, fee: RULES.PAUSE_FEE, status: 'pending' }
   });
 });
@@ -276,63 +276,63 @@ router.post('/loans', (req, res) => {
 
   const user = db.prepare(`SELECT * FROM users WHERE id=?`).get(req.user.id);
 
-  // Clause 4.1: Must have paid registration fee
+  // Must have paid registration fee
   if (!user.registration_fee_paid) {
-    return res.status(400).json({ error: 'Registration fee must be paid before applying for a loan (Clause 4.1)' });
+    return res.status(400).json({ error: 'Registration fee must be paid before applying for a loan' });
   }
 
-  // Clause 4.1: 12 weeks of compulsory savings
+  // 12 weeks of compulsory savings required
   const savings = getMemberSavings(req.user.id);
   if (savings.weekly_weeks < RULES.MIN_SAVINGS_WEEKS) {
     return res.status(400).json({
-      error: `You need at least ${RULES.MIN_SAVINGS_WEEKS} weeks of approved compulsory savings. You have ${savings.weekly_weeks} weeks. (Clause 4.1)`,
+      error: `You need at least ${RULES.MIN_SAVINGS_WEEKS} weeks of approved compulsory savings. You have ${savings.weekly_weeks} weeks.`,
       weekly_weeks: savings.weekly_weeks, required_weeks: RULES.MIN_SAVINGS_WEEKS
     });
   }
 
-  // Clause 4.2: No outstanding fines
+  // No outstanding fines
   const fines = db.prepare(`SELECT COALESCE(SUM(amount),0) as total FROM savings_fines WHERE user_id=? AND paid=0`).get(req.user.id);
   if (fines.total > 0) {
-    return res.status(400).json({ error: `You have outstanding fines of N${fines.total.toLocaleString()} that must be cleared first (Clause 4.2)` });
+    return res.status(400).json({ error: `You have outstanding fines of N${fines.total.toLocaleString()} that must be cleared before applying` });
   }
 
-  // Clause 4.3: No other active loan
+  // No other active loan
   const activeLoan = db.prepare(`SELECT id FROM loans WHERE user_id=? AND status IN ('pending','approved','in_progress')`).get(req.user.id);
   if (activeLoan) {
-    return res.status(400).json({ error: 'You already have an active loan. Complete it before applying for another (Clause 5.6)' });
+    return res.status(400).json({ error: 'You already have an active loan. Complete it before applying for another' });
   }
 
-  // Clause 4: Loan rights not suspended
+  // Loan rights not suspended
   if (user.loan_rights_suspended) {
     return res.status(400).json({ error: 'Your loan rights are currently suspended. Please contact admin.' });
   }
 
-  // Clause 5.1: Max 2x total savings (compulsory + voluntary)
+  // Max 2x total savings (compulsory + voluntary)
   const maxLoanBySavings = savings.total_approved * RULES.LOAN_MULTIPLIER;
 
-  // Clause 5.1: Max 10% of pool
+  // Max 10% of pool
   const pool = getPoolStats();
   const maxSingleLoan = pool.pool * RULES.MAX_SINGLE_LOAN_PCT;
   const maxLoan = Math.min(maxLoanBySavings, maxSingleLoan);
 
   if (amount_requested > maxLoan) {
     return res.status(400).json({
-      error: `Maximum loan is N${Math.floor(maxLoan).toLocaleString()} (2x your savings of N${savings.total_approved.toLocaleString()}, capped at 10% of pool). You requested N${Number(amount_requested).toLocaleString()}. (Clause 5.1)`,
+      error: `Maximum loan is N${Math.floor(maxLoan).toLocaleString()} (2x your savings of N${savings.total_approved.toLocaleString()}, capped at 10% of pool). You requested N${Number(amount_requested).toLocaleString()}.`,
       max_loan: maxLoan
     });
   }
 
-  // Clause 9.2: Enough available funds (reserve & lending cap)
+  // Enough available funds (25% reserve maintained)
   if (amount_requested > pool.available) {
     return res.status(400).json({
-      error: `Insufficient cooperative funds. Available for lending: N${Math.floor(pool.available).toLocaleString()} (after 25% reserve, Clause 9). Your request is on the waiting list.`,
+      error: `Insufficient cooperative funds. Available for lending: N${Math.floor(pool.available).toLocaleString()} (after 25% reserve). Your request will be placed on the waiting list.`,
       available: pool.available
     });
   }
 
-  // Clause 4.4: Two guarantors required
+  // Two guarantors required
   if (!guarantor1_id || !guarantor2_id) {
-    return res.status(400).json({ error: 'Two guarantors are required for a loan application (Clause 4.4 & 7.1)' });
+    return res.status(400).json({ error: 'Two guarantors are required for a loan application' });
   }
   if (guarantor1_id === guarantor2_id) {
     return res.status(400).json({ error: 'Guarantors must be two different members' });
@@ -344,18 +344,15 @@ router.post('/loans', (req, res) => {
   // Validate each guarantor
   for (const gId of [guarantor1_id, guarantor2_id]) {
     const g = db.prepare(`SELECT * FROM users WHERE id=? AND role='member' AND status='approved'`).get(gId);
-    if (!g) return res.status(400).json({ error: `Guarantor ${gId} is not a valid approved member` });
-    // Guarantor must not be on a loan (Clause 7.1)
+    if (!g) return res.status(400).json({ error: `Guarantor is not a valid approved member` });
     const gLoan = db.prepare(`SELECT id FROM loans WHERE user_id=? AND status IN ('approved','in_progress')`).get(gId);
-    if (gLoan) return res.status(400).json({ error: `Guarantor ${g.full_name} currently has an active loan and cannot guarantee (Clause 7.1)` });
-    // Guarantor must not already be guaranteeing (Clause 7.1)
+    if (gLoan) return res.status(400).json({ error: `${g.full_name} currently has an active loan and cannot act as guarantor` });
     const gGuaranteeing = db.prepare(`
       SELECT id FROM loans WHERE (guarantor1_id=? OR guarantor2_id=?) AND status IN ('pending','approved','in_progress')
     `).get(gId, gId);
-    if (gGuaranteeing) return res.status(400).json({ error: `Guarantor ${g.full_name} is already guaranteeing another member (Clause 7.1)` });
-    // Guarantor must have been member for 12+ weeks (savings record)
+    if (gGuaranteeing) return res.status(400).json({ error: `${g.full_name} is already guaranteeing another member` });
     const gWeeks = db.prepare(`SELECT COUNT(*) as weeks FROM savings WHERE user_id=? AND type='weekly' AND status='approved'`).get(gId);
-    if (gWeeks.weeks < RULES.MIN_SAVINGS_WEEKS) return res.status(400).json({ error: `Guarantor ${g.full_name} has not saved for 12 weeks yet (Clause 7.1)` });
+    if (gWeeks.weeks < RULES.MIN_SAVINGS_WEEKS) return res.status(400).json({ error: `${g.full_name} has not completed 12 weeks of savings yet and cannot act as guarantor` });
   }
 
   // Calculate processing fee (1%) and net disbursement
@@ -373,7 +370,7 @@ router.post('/loans', (req, res) => {
          purpose || null, guarantor1_id, guarantor2_id, months, instalment);
 
   res.status(201).json({
-    message: `Loan application for N${Number(amount_requested).toLocaleString()} submitted. Processing fee: N${processingFee.toLocaleString()}. Net disbursement if approved: N${amountDisbursed.toLocaleString()}. Admin will verify within 1-2 weeks (Clause 5.2).`,
+    message: `Loan application for N${Number(amount_requested).toLocaleString()} submitted. Processing fee: N${processingFee.toLocaleString()}. Net disbursement if approved: N${amountDisbursed.toLocaleString()}. Admin will verify within 1-2 weeks.`,
     loan: { id, amount_requested, processing_fee: processingFee, amount_disbursed: amountDisbursed, status: 'pending', repayment_months: months, repayment_instalment: instalment }
   });
 });

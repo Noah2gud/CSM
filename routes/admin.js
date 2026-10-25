@@ -167,14 +167,14 @@ router.put('/members/:id/status', (req, res) => {
   res.json({ message: `Member status updated to ${status}` });
 });
 
-// Suspend/restore loan rights (Clause 3.4 & 8.3)
+// Suspend/restore loan rights
 router.put('/members/:id/loan-rights', (req, res) => {
   const { suspended, reason } = req.body;
   db.prepare(`UPDATE users SET loan_rights_suspended=?, updated_at=datetime('now') WHERE id=?`).run(suspended ? 1 : 0, req.params.id);
   res.json({ message: `Loan rights ${suspended ? 'suspended' : 'restored'} for member` });
 });
 
-// Add a savings fine (Clause 3.4)
+// Add a savings fine
 router.post('/members/:id/fine', (req, res) => {
   const { amount, reason } = req.body;
   const fineAmount = amount || RULES.SAVINGS_LATE_FINE;
@@ -226,7 +226,7 @@ router.put('/savings/bulk-approve', (req, res) => {
 });
 
 // ============================================================
-// SAVINGS PAUSE MANAGEMENT (Clause 10.2)
+// SAVINGS PAUSE MANAGEMENT
 // ============================================================
 router.get('/pauses/pending', (req, res) => {
   const pauses = db.prepare(`
@@ -353,7 +353,7 @@ router.put('/repayments/:id', (req, res) => {
 });
 
 // ============================================================
-// LOAN SUGGESTION (AI-assisted — uses all approved savings per clause 5.1)
+// LOAN SUGGESTION (AI-assisted)
 // ============================================================
 router.get('/loans/:id/suggestion', (req, res) => {
   const loan = db.prepare(`SELECT l.*, u.full_name, u.credit_score FROM loans l JOIN users u ON l.user_id=u.id WHERE l.id=?`).get(req.params.id);
@@ -407,13 +407,13 @@ router.get('/loans/:id/suggestion', (req, res) => {
 
   let recommendation, level;
   if (!enoughWeeks) {
-    recommendation = `REJECT: Member has only ${weeklySavings.weeks} compulsory weeks — 12 required (Clause 4.1)`;
+    recommendation = `REJECT: Member has only ${weeklySavings.weeks} compulsory weeks — 12 required`;
     level = 'reject';
   } else if (hasFines) {
-    recommendation = `REJECT: Member has outstanding fines of N${outstandingFines.total} — must be cleared first (Clause 4.2)`;
+    recommendation = `REJECT: Member has outstanding fines of N${outstandingFines.total} — must be cleared before a loan can be approved`;
     level = 'reject';
   } else if (!canAfford) {
-    recommendation = `HOLD: Insufficient funds (N${Math.floor(pool.available).toLocaleString()} available). Place on waiting list (Clause 9.4)`;
+    recommendation = `HOLD: Insufficient funds (N${Math.floor(pool.available).toLocaleString()} available). Place on waiting list`;
     level = 'in_progress';
   } else if (totalScore >= 75) {
     recommendation = `STRONGLY APPROVE: Excellent score ${totalScore}/100 — clean record, strong savings, regular attendance`;

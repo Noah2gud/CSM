@@ -71,7 +71,7 @@ router.post('/register', (req, res) => {
   const token = jwt.sign({ id, email, role: 'member' }, JWT_SECRET, { expiresIn: '7d' });
 
   res.status(201).json({
-    message: 'Registration successful! Please pay the N5,000 registration fee to complete your membership (Clause 2.3).',
+    message: 'Registration successful! Please pay the N5,000 registration fee to complete your membership.',
     token,
     user: { id, full_name, email, phone, role: 'member', credit_score: creditScore, status, registration_fee_paid: 0 },
     credit_score: creditScore, eligible: true, registration_fee: 5000

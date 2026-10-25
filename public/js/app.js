@@ -119,11 +119,11 @@ async function loadMemberDashboard() {
     const maxLoan = s.max_loan_eligible || 0;
     document.getElementById('memberStats').innerHTML = `
       <div class="stat-card"><div class="label">Compulsory (Weekly)</div><div class="value">${fmt(s.weekly_total)}</div><div class="sub">${s.weekly_weeks} approved weeks</div></div>
-      <div class="stat-card accent"><div class="label">Voluntary Savings</div><div class="value">${fmt(s.voluntary_total)}</div><div class="sub">Also counts for loans (Clause 5.1)</div></div>
+      <div class="stat-card accent"><div class="label">Voluntary Savings</div><div class="value">${fmt(s.voluntary_total)}</div><div class="sub">Also counts for loans</div></div>
       <div class="stat-card info"><div class="label">Total Approved Savings</div><div class="value">${fmt(s.total_approved)}</div><div class="sub">Compulsory + Voluntary</div></div>
       <div class="stat-card ${s.weekly_weeks>=12?'':'danger'}"><div class="label">Max Loan (2× savings)</div><div class="value">${fmt(maxLoan)}</div><div class="sub">${s.weekly_weeks>=12?'✓ Eligible':''+s.weekly_weeks+'/12 compulsory weeks'}</div></div>
       ${s.pending_count>0?`<div class="stat-card" style="border-left-color:var(--warning);"><div class="label"><i class="fas fa-clock"></i> Pending Approval</div><div class="value">${fmt(s.pending_total)}</div><div class="sub">${s.pending_count} payment(s) — not counted yet</div></div>`:''}
-      ${prof.outstanding_fines>0?`<div class="stat-card danger"><div class="label"><i class="fas fa-exclamation-triangle"></i> Outstanding Fines</div><div class="value">${fmt(prof.outstanding_fines)}</div><div class="sub">Must clear before loan (Clause 4.2)</div></div>`:''}
+      ${prof.outstanding_fines>0?`<div class="stat-card danger"><div class="label"><i class="fas fa-exclamation-triangle"></i> Outstanding Fines</div><div class="value">${fmt(prof.outstanding_fines)}</div><div class="sub">Must be cleared before applying for a loan</div></div>`:''}
     `;
 
     renderSavingsTab(savRes, prof);
@@ -171,11 +171,11 @@ function renderLoansTab(loanRes, savSummary, guarantors) {
   const hasFines = (savSummary.outstanding_fines || 0) > 0;
   let info = '';
   if (!eligible) {
-    info = `<div class="alert alert-warning"><i class="fas fa-exclamation-triangle"></i> You need <strong>12 weeks of approved compulsory savings</strong> to apply. Currently: <strong>${savSummary.weekly_weeks}</strong> weeks (Clause 4.1).</div>`;
+    info = `<div class="alert alert-warning"><i class="fas fa-exclamation-triangle"></i> You need <strong>12 weeks of approved compulsory savings</strong> to apply. Currently: <strong>${savSummary.weekly_weeks}</strong> weeks.</div>`;
   } else if (hasFines) {
-    info = `<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> You have outstanding fines of <strong>${fmt(savSummary.outstanding_fines)}</strong> that must be paid before applying for a loan (Clause 4.2).</div>`;
+    info = `<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> You have outstanding fines of <strong>${fmt(savSummary.outstanding_fines)}</strong> that must be paid before applying for a loan.</div>`;
   } else {
-    info = `<div class="alert alert-success"><i class="fas fa-check-circle"></i> Eligible! Max loan: <strong>${fmt(savSummary.max_loan_eligible)}</strong> (2× total savings of ${fmt(savSummary.total_approved)}, both compulsory & voluntary count, Clause 5.1). Processing fee: 1% deducted at disbursement (Clause 5.4).</div>`;
+    info = `<div class="alert alert-success"><i class="fas fa-check-circle"></i> Eligible! Max loan: <strong>${fmt(savSummary.max_loan_eligible)}</strong> (2× total savings of ${fmt(savSummary.total_approved)}, both compulsory & voluntary count). A 1% processing fee is deducted at disbursement.</div>`;
   }
   document.getElementById('loanEligibilityInfo').innerHTML = info;
 
@@ -325,7 +325,7 @@ document.getElementById('loanForm').addEventListener('submit', async e => {
   const data = Object.fromEntries(new FormData(e.target).entries());
   data.amount_requested = parseFloat(data.amount_requested);
   data.repayment_months = parseInt(data.repayment_months);
-  if (!data.guarantor1_id || !data.guarantor2_id) { showGlobalAlert('Please select both guarantors (Clause 7.1)', 'error'); return; }
+  if (!data.guarantor1_id || !data.guarantor2_id) { showGlobalAlert('Please select both guarantors', 'error'); return; }
   try {
     const r = await apiCall('/members/loans', 'POST', data);
     showGlobalAlert(r.message, 'success'); e.target.reset(); loadMemberDashboard();
@@ -717,7 +717,7 @@ async function loadAllSuggestions() {
         <div class="stat-card danger"><div class="label">Suggest Reject</div><div class="value">${s.reject}</div></div>
         <div class="stat-card info"><div class="label">Available Funds</div><div class="value">${fmt(s.available_funds)}</div><div class="sub">After: ${fmt(s.remaining_after_acceptance)}</div></div>
       </div>
-      <div class="alert alert-info mb-3" style="font-size:0.88rem;">Suggestions based on credit score, approved savings (compulsory + voluntary per Clause 5.1), 12-week requirement, meeting attendance, outstanding fines, and available pool funds (25% reserve maintained).</div>`;
+      <div class="alert alert-info mb-3" style="font-size:0.88rem;">Suggestions based on credit score, approved savings (compulsory + voluntary), 12-week requirement, meeting attendance, outstanding fines, and available pool funds (25% reserve maintained).</div>`;
     if (!r.suggestions.length) { document.getElementById('suggestionsList').innerHTML = `<p style="text-align:center;padding:24px;color:var(--text-light);">No pending loans.</p>`; return; }
     document.getElementById('suggestionsList').innerHTML = r.suggestions.map(s => {
       const sc = s.score>=60?'score-high':s.score>=45?'score-medium':'score-low';

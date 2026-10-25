@@ -29,10 +29,10 @@
     </div>
   </div>
   <div class="features-grid">
-    <div class="feature-card"><div class="icon"><i class="fas fa-piggy-bank"></i></div><h3>Interest-Free Loans</h3><p>Access loans up to 2x your total savings. No interest — only a 1% processing fee (Clause 5.1 & 5.4).</p></div>
-    <div class="feature-card"><div class="icon"><i class="fas fa-shield-alt"></i></div><h3>Credit Verified</h3><p>BVN-based credit score check ensures all members are trustworthy (Clause 2.1).</p></div>
-    <div class="feature-card"><div class="icon"><i class="fas fa-users"></i></div><h3>12-Week Commitment</h3><p>Save for 12 consecutive weeks, then access loans up to 2x your savings (Clause 4.1).</p></div>
-    <div class="feature-card"><div class="icon"><i class="fas fa-lock"></i></div><h3>Your Savings are Safe</h3><p>25% pool reserve never lent out. Maximum 70% lendable at any time (Clause 9).</p></div>
+    <div class="feature-card"><div class="icon"><i class="fas fa-piggy-bank"></i></div><h3>Interest-Free Loans</h3><p>Access loans up to 2x your total savings. No interest — only a 1% processing fee.</p></div>
+    <div class="feature-card"><div class="icon"><i class="fas fa-shield-alt"></i></div><h3>Credit Verified</h3><p>BVN-based credit score check ensures all members are trustworthy.</p></div>
+    <div class="feature-card"><div class="icon"><i class="fas fa-users"></i></div><h3>12-Week Commitment</h3><p>Save for 12 consecutive weeks, then access loans up to 2x your savings.</p></div>
+    <div class="feature-card"><div class="icon"><i class="fas fa-lock"></i></div><h3>Your Savings are Safe</h3><p>25% pool reserve never lent out. Maximum 70% lendable at any time.</p></div>
   </div>
   <div class="contact-info">
     <h3>Contact Us</h3>
@@ -45,7 +45,7 @@
   <div style="max-width:620px;margin:32px auto;">
     <div class="card">
       <h2 style="color:var(--primary);margin-bottom:4px;"><i class="fas fa-user-plus"></i> Member Registration</h2>
-      <p style="color:var(--text-light);margin-bottom:20px;">Registration fee: N5,000 (non-refundable, Clause 2.3). BVN is used for credit check.</p>
+      <p style="color:var(--text-light);margin-bottom:20px;">Registration fee: N5,000 (non-refundable). BVN is used for credit check.</p>
       <div id="registerAlert"></div>
       <form id="registerForm">
         <div class="form-row">
@@ -111,7 +111,7 @@
   <div style="max-width:440px;margin:60px auto;">
     <div class="card">
       <h2 style="color:var(--primary);margin-bottom:8px;"><i class="fas fa-credit-card"></i> Registration Fee</h2>
-      <div class="alert alert-info">Your application is approved! Pay the <strong>N5,000 registration fee</strong> to activate your account (Clause 2.3 — non-refundable).</div>
+      <div class="alert alert-info">Your application is approved! Pay the <strong>N5,000 registration fee</strong> to activate your account (non-refundable).</div>
       <div style="text-align:center;padding:16px;background:#f5f5f5;border-radius:8px;margin:16px 0;">
         <p style="color:var(--text-light);font-size:0.85rem;">Amount Due</p>
         <p style="font-size:2rem;font-weight:700;color:var(--primary);">N5,000</p>
@@ -139,7 +139,7 @@
   <div id="memberTab-savings" class="tab-content active">
     <div class="card">
       <div class="card-header"><h2>Submit a Payment</h2></div>
-      <div class="alert alert-info" style="margin-bottom:12px;"><i class="fas fa-info-circle"></i> <strong>Compulsory (Weekly)</strong>: min N1,000, max N20,000/week (Clause 3.1-3.2). <strong>Voluntary</strong>: any amount, anytime (Clause 3.3). Both count toward your loan limit. Payments are visible to admin for approval.</div>
+      <div class="alert alert-info" style="margin-bottom:12px;"><i class="fas fa-info-circle"></i> <strong>Compulsory (Weekly)</strong>: min N1,000, max N20,000/week. <strong>Voluntary</strong>: any amount, anytime. Both count toward your loan limit. Payments are visible to admin for approval.</div>
       <form id="savingsForm" style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:16px;align-items:end;">
         <div class="form-group" style="margin-bottom:0;"><label>Savings Type</label>
           <select name="type"><option value="weekly">Compulsory (Weekly)</option><option value="special">Voluntary (Special)</option></select></div>
@@ -149,7 +149,7 @@
       </form>
       <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">
         <button class="btn btn-outline btn-sm" onclick="showPauseForm()" style="margin-right:8px;"><i class="fas fa-pause"></i> Request Savings Pause</button>
-        <span style="font-size:0.82rem;color:var(--text-light);">Clause 10.2: up to 4 weeks, N500 fee, max twice/year</span>
+        <span style="font-size:0.82rem;color:var(--text-light);">Up to 4 weeks, N500 fee, max twice/year</span>
         <div id="pauseFormContainer" style="display:none;margin-top:12px;">
           <form id="pauseForm" style="display:flex;gap:16px;align-items:end;">
             <div class="form-group" style="margin-bottom:0;"><label>How many weeks? (1-4)</label><input type="number" name="weeks" min="1" max="4" value="1" style="width:100px;"></div>
@@ -191,9 +191,9 @@
             <select name="guarantor2_id" id="guarantor2Select"><option value="">— Select Guarantor 2 —</option></select></div>
         </div>
         <div class="alert alert-warning" style="margin-bottom:12px;font-size:0.88rem;">
-          <i class="fas fa-info-circle"></i> <strong>Clause 5.4:</strong> A 1% processing fee is deducted at disbursement.
-          <strong>Clause 5.5:</strong> Compulsory savings must continue during loan repayment.
-          <strong>Clause 6:</strong> Your savings equal to the loan balance will be frozen until fully repaid.
+          <i class="fas fa-info-circle"></i> A 1% processing fee is deducted at disbursement.
+          Compulsory savings must continue during loan repayment.
+          Your savings equal to the loan balance will be frozen until fully repaid.
         </div>
         <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Submit Application</button>
       </form>

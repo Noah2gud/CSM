@@ -79,7 +79,7 @@ const SCHEMA = `
   );
 
   -- Compulsory (weekly) and Voluntary (special) savings
-  -- Both count toward loan limit (per clause 5.1)
+  -- Both count toward loan limit
   -- Only approved entries count
   CREATE TABLE IF NOT EXISTS savings (
     id TEXT PRIMARY KEY,
@@ -97,7 +97,7 @@ const SCHEMA = `
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );
 
-  -- Late savings fines tracker (clause 3.4: N200 per late week)
+  -- Late savings fines tracker (N200 per late week)
   CREATE TABLE IF NOT EXISTS savings_fines (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
@@ -108,7 +108,7 @@ const SCHEMA = `
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );
 
-  -- Savings pause requests (clause 10.2: up to 4 weeks, N500 fee, twice/year)
+  -- Savings pause requests (up to 4 weeks, N500 fee, twice/year)
   CREATE TABLE IF NOT EXISTS savings_pauses (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
@@ -145,7 +145,7 @@ const SCHEMA = `
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );
 
-  -- Loan repayments (clause 5.5: weekly or monthly instalments)
+  -- Loan repayments (weekly or monthly instalments)
   CREATE TABLE IF NOT EXISTS loan_repayments (
     id TEXT PRIMARY KEY,
     loan_id TEXT NOT NULL,
@@ -159,7 +159,7 @@ const SCHEMA = `
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );
 
-  -- Late loan fines (clause 8.1: N500 per late instalment)
+  -- Late loan fines (N500 per late instalment)
   CREATE TABLE IF NOT EXISTS loan_fines (
     id TEXT PRIMARY KEY,
     loan_id TEXT NOT NULL,
@@ -172,7 +172,7 @@ const SCHEMA = `
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );
 
-  -- Welfare levy (clause 12.1: N300/month per member)
+  -- Welfare levy (N300/month per member)
   CREATE TABLE IF NOT EXISTS welfare_levies (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
