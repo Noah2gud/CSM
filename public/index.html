@@ -27,9 +27,8 @@
 <!-- LANDING -->
 <div id="landingPage" class="page active">
 
-  <!-- Hero -->
+  <!-- Hero (no logo here — navbar has it) -->
   <div class="hero">
-    <img src="images/logo.png" alt="Nofem Group Foundation" class="hero-logo" onerror="this.style.display='none'">
     <div class="hero-tagline">Empowering People &bull; Building Communities &bull; Creating a Better Tomorrow</div>
     <h1>Nofem Group Foundation</h1>
     <p>A member-owned cooperative where people save together, invest together, and grow together. Join us to build financial security and access real economic benefits.</p>
@@ -48,6 +47,22 @@
       <span>|</span>
       <i class="fas fa-gift"></i> Receive economic benefits
     </p>
+  </div>
+
+  <!-- Feature Image 1: Community togetherness -->
+  <div class="feature-image-section">
+    <div class="feature-image-content">
+      <div class="feature-image-text">
+        <h2>Strength in Unity</h2>
+        <p>We believe that when people come together with shared purpose, they can achieve what no individual can alone. Nofem Group Foundation brings together hardworking men and women who pool their savings, support each other, and build lasting wealth as a community.</p>
+        <p style="margin-top:12px;">Every contribution grows the pool that lifts every member.</p>
+        <button class="btn btn-primary" style="margin-top:20px;" onclick="showPage('registerPage')"><i class="fas fa-user-plus"></i> Join the Community</button>
+      </div>
+      <div class="feature-image-wrap">
+        <img src="https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=600&q=80&auto=format&fit=crop"
+             alt="Community members together" loading="lazy">
+      </div>
+    </div>
   </div>
 
   <!-- Four Pillars -->
@@ -74,6 +89,22 @@
         <div class="pillar-icon"><i class="fas fa-seedling"></i></div>
         <h3>Food Security</h3>
         <p>We support members in building food security through collective agricultural initiatives and shared resources within the community.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature Image 2: Financial growth -->
+  <div class="feature-image-section reverse">
+    <div class="feature-image-content">
+      <div class="feature-image-wrap">
+        <img src="https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=600&q=80&auto=format&fit=crop"
+             alt="Financial planning and savings" loading="lazy">
+      </div>
+      <div class="feature-image-text">
+        <h2>Grow Your Savings, Access Real Benefits</h2>
+        <p>Members contribute compulsory weekly savings and voluntary savings, held securely in the cooperative pool. After 12 weeks of consistent contributions, you become eligible to apply for an interest-free loan of up to 2× your total savings.</p>
+        <p style="margin-top:12px;">Annual surpluses are shared among members. Your money works for you and for the collective.</p>
+        <button class="btn btn-primary" style="margin-top:20px;" onclick="showPage('registerPage')"><i class="fas fa-chart-line"></i> Start Saving Today</button>
       </div>
     </div>
   </div>
@@ -139,11 +170,25 @@
     </div>
   </div>
 
-  <!-- Footer CTA -->
+  <!-- Contact & CTA Footer -->
   <div class="contact-info">
-    <h3>Ready to Join?</h3>
-    <p>Become a member today and start building your financial future with Nofem Group Foundation.</p>
-    <button class="btn btn-accent" style="margin-top:16px;" onclick="showPage('registerPage')">
+    <h3>Get in Touch</h3>
+    <p>Ready to join or have a question? We'd love to hear from you.</p>
+    <div class="contact-details">
+      <div class="contact-item">
+        <i class="fas fa-envelope"></i>
+        <a href="mailto:nofemgroup@gmail.com">nofemgroup@gmail.com</a>
+      </div>
+      <div class="contact-item">
+        <i class="fas fa-phone"></i>
+        <a href="tel:+2348032180923">+234 803 218 0923</a>
+      </div>
+      <div class="contact-item">
+        <i class="fas fa-phone"></i>
+        <a href="tel:+2348108759222">+234 810 875 9222</a>
+      </div>
+    </div>
+    <button class="btn btn-accent" style="margin-top:20px;" onclick="showPage('registerPage')">
       <i class="fas fa-user-plus"></i> Register Now
     </button>
   </div>
