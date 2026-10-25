@@ -64,8 +64,11 @@ body {
 
 .navbar-brand img {
   height: 46px;
-  width: auto;
-  filter: brightness(0) invert(1);
+  width: 46px;
+  object-fit: contain;
+  border-radius: 50%;
+  background: white;
+  padding: 3px;
 }
 
 .navbar-brand .brand-text {
