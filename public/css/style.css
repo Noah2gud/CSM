@@ -1088,3 +1088,97 @@ tbody tr:hover {
     font-size: 0.75rem;
   }
 }
+
+/* ===== Empowerment Section ===== */
+.empowerment-section {
+  max-width: 1200px;
+  margin: 0 auto 48px;
+  padding: 0 24px;
+}
+
+.empowerment-header {
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.empowerment-header h2 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.empowerment-intro {
+  max-width: 740px;
+  margin: 0 auto 28px;
+  text-align: center;
+  color: var(--text-light);
+  font-size: 0.97rem;
+  line-height: 1.7;
+}
+
+.empowerment-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.empowerment-card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 24px 16px;
+  text-align: center;
+  border-bottom: 4px solid var(--accent);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.empowerment-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+.emp-icon {
+  font-size: 2.4rem;
+  margin-bottom: 12px;
+  line-height: 1;
+}
+
+.empowerment-card h4 {
+  color: var(--primary);
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.empowerment-card p {
+  color: var(--text-light);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.empowerment-note {
+  background: linear-gradient(135deg, #fff8e7, #fff3cd);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 14px 18px;
+  font-size: 0.87rem;
+  color: #7a5800;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  line-height: 1.6;
+}
+
+.empowerment-note i {
+  color: var(--accent);
+  font-size: 1rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+@media (max-width: 768px) {
+  .empowerment-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
